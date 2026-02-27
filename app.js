@@ -569,7 +569,7 @@
                             </div></div>
                         </div>`;
                 });
-                html += `</div></div></div>`; // close popular-columns, inner, body, block
+                html += `</div></div></div></div>`; // close popular-columns, inner, body, block
             }
 
             html += '<div class="popular-columns">';
@@ -1883,3 +1883,4 @@
     // ── Init ──
     loadAll();
 })();
+
