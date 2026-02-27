@@ -1,0 +1,356 @@
+﻿<!DOCTYPE html>
+<html lang="pl" data-theme="dark">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Panel COT — Analiza Pozycjonowania CFTC</title>
+    <meta name="description"
+        content="Interaktywny panel Commitments of Traders (COT) z danymi o pozycjonowaniu futures w skali makro.">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap"
+        rel="stylesheet">
+    <script src="https://unpkg.com/lightweight-charts@4.1.1/dist/lightweight-charts.standalone.production.js"></script>
+    <link rel="stylesheet" href="styles.css">
+</head>
+
+<body>
+    <header id="app-header">
+        <div class="header-content">
+            <div class="logo-area">
+                <div class="logo-icon">
+                    <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
+                        <rect x="2" y="14" width="6" height="12" rx="1" fill="#fff" />
+                        <rect x="11" y="8" width="6" height="18" rx="1" fill="#fff" />
+                        <rect x="20" y="2" width="6" height="24" rx="1" fill="#fff" />
+                    </svg>
+                </div>
+                <div>
+                    <h1>Panel COT</h1>
+                    <p class="subtitle">Analiza przepływu kapitału (CFTC)</p>
+                </div>
+            </div>
+            <div class="header-actions">
+                <button id="theme-toggle" class="icon-btn" aria-label="Przełącz motyw">
+                    <svg class="sun-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                        stroke-width="2">
+                        <circle cx="12" cy="12" r="5" />
+                        <line x1="12" y1="1" x2="12" y2="3" />
+                        <line x1="12" y1="21" x2="12" y2="23" />
+                        <line x1="4.22" y1="4.22" x2="5.64" y2="5.64" />
+                        <line x1="18.36" y1="18.36" x2="19.78" y2="19.78" />
+                        <line x1="1" y1="12" x2="3" y2="12" />
+                        <line x1="21" y1="12" x2="23" y2="12" />
+                        <line x1="4.22" y1="19.78" x2="5.64" y2="18.36" />
+                        <line x1="18.36" y1="5.64" x2="19.78" y2="4.22" />
+                    </svg>
+                    <svg class="moon-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                        stroke-width="2">
+                        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
+                    </svg>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <main id="app-main">
+        <!-- Instrument Selection View -->
+        <section id="instrument-view" class="view active">
+            <div class="search-container">
+                <div class="search-box">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="11" cy="11" r="8" />
+                        <line x1="21" y1="21" x2="16.65" y2="16.65" />
+                    </svg>
+                    <input type="text" id="instrument-search"
+                        placeholder="Szukaj instrumentu... (np. Gold, EUR, Bitcoin, Ropa, Pszenica)" autocomplete="off">
+                    <button id="clear-search" class="clear-btn" style="display:none">✕</button>
+                </div>
+            </div>
+
+            <!-- Desktop: horizontal tabs | Mobile: hidden, replaced by dropdown below -->
+            <div class="category-tabs" id="category-tabs"></div>
+
+            <!-- Mobile category dropdown -->
+            <div class="cat-mobile-bar" id="cat-mobile-bar">
+                <button class="cat-mobile-toggle" id="cat-mobile-toggle">
+                    <span id="cat-mobile-label">Najpopularniejsze</span>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polyline points="6 9 12 15 18 9" />
+                    </svg>
+                </button>
+                <div class="cat-mobile-dropdown" id="cat-mobile-dropdown"></div>
+            </div>
+
+            <div id="instruments-grid">
+                <div class="loading-state" id="instruments-loading">
+                    <div class="spinner"></div>
+                    <p>Pobieranie bazy rynków z CFTC...</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Chart View -->
+        <section id="chart-view" class="view">
+            <div class="chart-header">
+                <div class="instrument-title-row">
+                    <button id="back-btn" class="back-button" aria-label="Powrót" title="Powrót">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2">
+                            <line x1="19" y1="12" x2="5" y2="12" />
+                            <polyline points="12 19 5 12 12 5" />
+                        </svg>
+                    </button>
+                    <h2 id="chart-instrument-name">—</h2>
+                    <button id="chart-fav-btn" class="fav-btn-lg" aria-label="Dodaj do ulubionych">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2">
+                            <polygon
+                                points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+                        </svg>
+                    </button>
+                    <span id="chart-contract-units" class="badge secondary"></span>
+                    <div class="report-badges" id="report-badges"></div>
+                    <span id="chart-report-date" class="badge secondary" style="margin-left:auto"></span>
+                </div>
+            </div>
+
+            <!-- Fullscreen Container -->
+            <div id="fullscreen-container" class="fullscreen-container">
+                <!-- Compact Controls Bar -->
+                <div class="chart-section-card">
+                    <div class="compact-bar">
+                        <div class="cbar-group">
+                            <div class="cbar-toggle" id="report-type-toggle">
+                                <button class="cbar-btn active" data-type="legacy">Ogólny</button>
+                                <button class="cbar-btn" data-type="detailed">Szczegółowy</button>
+                            </div>
+                        </div>
+                        <div class="cbar-sep"></div>
+                        <div class="cbar-group">
+                            <div class="cbar-toggle" id="position-type-toggle">
+                                <button class="cbar-btn active" data-pos="net">Netto</button>
+                                <button class="cbar-btn" data-pos="long">+ Long</button>
+                                <button class="cbar-btn" data-pos="short">+ Short</button>
+                            </div>
+                        </div>
+                        <div class="cbar-sep"></div>
+                        <div class="cbar-group" id="yf-price-control" style="display:none">
+                            <button id="btn-toggle-price" class="cbar-price-btn">
+                                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                    stroke-width="2">
+                                    <polyline points="22 7 13.5 15.5 8.5 10.5 2 17" />
+                                    <polyline points="16 7 22 7 22 13" />
+                                </svg>
+                                <span id="btn-price-label">Cena</span>
+                            </button>
+                        </div>
+                        <div style="flex:1"></div>
+                        <div class="cbar-group">
+                            <div class="cbar-range">
+                                <button class="range-btn" data-range="1Y">1Y</button>
+                                <button class="range-btn active" data-range="3Y">3Y</button>
+                                <button class="range-btn" data-range="5Y">5Y</button>
+                                <button class="range-btn" data-range="YTD">YTD</button>
+                                <button class="range-btn" data-range="MAX">MAX</button>
+                            </div>
+                        </div>
+                        <div class="cbar-sep"></div>
+                        <div class="cbar-group" style="position:relative">
+                            <button class="cbar-btn" id="quick-filters-toggle"
+                                style="display:flex; align-items:center; gap:5px; font-weight:600;">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                    stroke-width="2">
+                                    <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon>
+                                </svg>
+                                Filtry
+                            </button>
+                            <div id="quick-filters-menu" class="st-menu dropdown-menu"
+                                style="display:none; position:absolute; top:calc(100% + 8px); right:0; width:220px; z-index:100;">
+                                <div class="st-menu-header"
+                                    style="padding: 10px 15px; font-size: 0.8rem; color: var(--tx-3); text-transform: uppercase;">
+                                    Szybkie filtry</div>
+                                <div id="qf-options" style="display: flex; flex-direction: column; padding: 5px;"></div>
+                            </div>
+                        </div>
+                        <div class="cbar-sep"></div>
+                        <div class="cbar-gear-wrap" style="display:flex; gap:4px;">
+                            <button class="cbar-gear-btn" id="fullscreen-btn" title="Pełny Ekran">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                    stroke-width="2">
+                                    <path
+                                        d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3">
+                                    </path>
+                                </svg>
+                            </button>
+                            <button class="cbar-gear-btn" id="settings-toggle" title="Ustawienia i serie">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                    stroke-width="2">
+                                    <circle cx="12" cy="12" r="3" />
+                                    <path
+                                        d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
+                                </svg>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Chips row -->
+                <div class="chips-bar" id="series-chips">
+                    <span class="chips-label">Widoczne serie:</span>
+                </div>
+
+                <!-- Chart -->
+                <div class="chart-wrapper" style="position:relative;">
+                    <div id="chart-container" class="chart-container"></div>
+                    <div id="chart-loading" class="chart-loading" style="display:none">
+                        <div class="spinner"></div>
+                        <p>Ładowanie danych...</p>
+                    </div>
+                </div>
+
+                <!-- Proportion Chart -->
+                <div class="chart-wrapper" id="prop-chart-wrapper"
+                    style="position:relative; margin-top: 15px; display: none;">
+                    <h4 style="font-size: 0.8rem; margin: 0 0 5px 5px; color: var(--tx-2); text-transform: uppercase;">
+                        Proporcje 100%</h4>
+                    <div id="prop-chart-container" class="chart-container" style="height: 180px;"></div>
+                </div>
+            </div>
+
+            <div class="section-card" id="market-composition" style="display:none">
+                <div class="section-header">
+                    <h3>Struktura Otwartych Pozycji</h3>
+                    <p class="section-hint">Procentowy rozkład otwartych pozycji pomiędzy grupami uczestników rynku.
+                        Pokazuje kto — i ile — trzyma aktywnych kontraktów po stronie długiej i krótkiej.</p>
+                </div>
+                <div class="pie-charts-grid" id="pie-charts-grid"></div>
+            </div>
+
+            <div class="section-card" id="data-summary" style="display:none">
+                <div class="section-header">
+                    <h3>Dane Liczbowe Pozycji</h3>
+                    <p class="section-hint">Wolumeny otwartych pozycji dla każdej grupy uczestników wraz ze zmianami
+                        względem poprzedniego okresu. Kolor zielony oznacza napływ kapitału, czerwony — jego odpływ.</p>
+                </div>
+                <div class="table-controls">
+                    <div class="table-period-toggle">
+                        <span class="table-period-label">Zmiana względem:</span>
+                        <button class="period-btn active" data-period="ww">Poprzedniego tygodnia</button>
+                        <button class="period-btn" data-period="mm">Poprzedniego miesiąca</button>
+                        <button class="period-btn" data-period="yy">Poprzedniego roku</button>
+                    </div>
+                    <div id="table-date-range" class="table-date-range"></div>
+                </div>
+                <div id="table-container" style="overflow-x:auto"></div>
+            </div>
+        </section>
+    </main>
+
+    <!-- ═══ DRAWER — Settings & Series ═══ -->
+    <div class="drawer-backdrop" id="drawer-backdrop"></div>
+    <div class="drawer" id="settings-drawer">
+        <div class="drawer-header">
+            <div class="drawer-header-bar">
+                <span class="drawer-title">Ustawienia &amp; Serie</span>
+                <button class="drawer-close" id="drawer-close"><svg width="14" height="14" viewBox="0 0 24 24"
+                        fill="none" stroke="currentColor" stroke-width="2.5">
+                        <line x1="18" y1="6" x2="6" y2="18" />
+                        <line x1="6" y1="6" x2="18" y2="18" />
+                    </svg></button>
+            </div>
+            <div class="drawer-tabs">
+                <button class="drawer-tab active" data-dtab="settings"><svg width="13" height="13" viewBox="0 0 24 24"
+                        fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="12" cy="12" r="3" />
+                        <path
+                            d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
+                    </svg> Ustawienia</button>
+                <button class="drawer-tab" data-dtab="same"><svg width="13" height="13" viewBox="0 0 24 24" fill="none"
+                        stroke="currentColor" stroke-width="2">
+                        <line x1="12" y1="5" x2="12" y2="19" />
+                        <line x1="5" y1="12" x2="19" y2="12" />
+                    </svg> Dodaj serię</button>
+                <button class="drawer-tab" data-dtab="other"><svg width="13" height="13" viewBox="0 0 24 24" fill="none"
+                        stroke="currentColor" stroke-width="2">
+                        <circle cx="11" cy="11" r="8" />
+                        <line x1="21" y1="21" x2="16.65" y2="16.65" />
+                    </svg> Inny instrument</button>
+            </div>
+        </div>
+        <!-- Tab: Ustawienia -->
+        <div class="drawer-panel active" id="dtab-settings">
+            <div class="spop-section">
+                <div class="spop-label">Jednostka pozycji</div>
+                <div class="cbar-toggle">
+                    <button id="val-mul-1" class="cbar-btn active" data-mul="1">Liczba kontraktów</button>
+                    <button id="val-mul-size" class="cbar-btn" data-mul="size">Wartość nominalna <span id="mul-label"
+                            style="opacity:0.6"></span></button>
+                </div>
+            </div>
+            <div class="spop-section">
+                <div class="spop-label">Skala osi</div>
+                <div class="cbar-toggle">
+                    <button id="btn-invert-1" class="cbar-btn" title="Odwróć lewą oś">Odwróć lewą ↕</button>
+                    <button id="btn-invert-2" class="cbar-btn" title="Odwróć prawą oś">Odwróć prawą ↕</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tab: Ta sama seria -->
+        <div class="drawer-panel" id="dtab-same">
+            <div class="spop-section">
+                <div class="spop-label">Wybierz serię z tego instrumentu</div>
+                <select id="add-series-select" class="styled-select"></select>
+                <div class="axis-toggle" style="margin-top:8px;">
+                    <button class="axis-btn active" data-axis="left">Lewa oś</button>
+                    <button class="axis-btn" data-axis="right">Prawa oś</button>
+                </div>
+                <div style="display:flex;gap:6px;margin-top:8px;">
+                    <button id="confirm-add-series" class="confirm-btn">Dodaj serię</button>
+                    <button id="cancel-add-series" class="cancel-btn" style="display:none"></button>
+                </div>
+            </div>
+            <div id="add-series-panel" style="display:none"></div>
+        </div>
+
+        <!-- Tab: Inny instrument -->
+        <div class="drawer-panel" id="dtab-other">
+            <div class="spop-section">
+                <div class="spop-label">Szukaj instrumentu</div>
+                <div class="drawer-search-box">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="11" cy="11" r="8" />
+                        <line x1="21" y1="21" x2="16.65" y2="16.65" />
+                    </svg>
+                    <input type="text" id="cross-instr-search" placeholder="np. Gold, EUR, S&P..." autocomplete="off">
+                </div>
+                <div id="cross-instr-results" class="cross-results"></div>
+            </div>
+            <div class="spop-section" id="cross-series-section" style="display:none">
+                <div class="spop-label">Seria z: <strong id="cross-instr-name"></strong></div>
+                <select id="cross-series-select" class="styled-select"></select>
+                <div class="axis-toggle" style="margin-top:8px;">
+                    <button class="cross-axis-btn active" data-axis="left">Lewa oś</button>
+                    <button class="cross-axis-btn" data-axis="right">Prawa oś</button>
+                </div>
+                <button id="confirm-cross-series" class="confirm-btn" style="margin-top:8px;">Dodaj serię</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- add-series-btn legacy shim (hidden, used internally) -->
+    <button id="add-series-btn" style="display:none"></button>
+
+    <footer id="app-footer">
+        <p>Dane pochodzą z rejestru otwartych pozycji CFTC: <a
+                href="https://www.cftc.gov/MarketReports/CommitmentsofTraders/index.htm" target="_blank"
+                rel="noopener">Commitments of Traders</a> dostępnego przez API Socrata · Wyłącznie do celów
+            analitycznych i edukacyjnych</p>
+    </footer>
+
+    <script src="app.js"></script>
+</body>
+
+</html>
