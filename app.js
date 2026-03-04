@@ -263,6 +263,10 @@
     let activeSeries = [];
     let chart = null;
     let propChart = null;
+    let deltaChart = null;
+    let showDelta = false;
+    let syncActive = false;
+    let chartLogicalHandler = null;
     let invertL = false, invertR = false;
     let currentInst = null;
     let valueMultiplier = 1;
@@ -288,6 +292,8 @@
         yfControl: $('#yf-price-control'), btnTogglePrice: $('#btn-toggle-price'), btnPriceLabel: $('#btn-price-label'),
         chartBox: $('#chart-container'), chartLoad: $('#chart-loading'), ranges: $$('.range-btn'),
         propChartWrap: $('#prop-chart-wrapper'), propChartBox: $('#prop-chart-container'),
+        deltaChartWrap: $('#delta-chart-wrapper'), deltaChartBox: $('#delta-chart-container'),
+        btnToggleDelta: $('#btn-toggle-delta'),
         chips: $('#series-chips'),
         addBtn: $('#add-series-btn'), addPanel: $('#add-series-panel'),
         addSel: $('#add-series-select'), confirmAdd: $('#confirm-add-series'), cancelAdd: $('#cancel-add-series'),
@@ -784,8 +790,8 @@
             layout: { background: { type: 'solid', color: dk ? '#0a0f1a' : '#fff' }, textColor: dk ? '#6b7a94' : '#9ca3af', fontFamily: "'Inter',sans-serif", fontSize: 12 },
             grid: { vertLines: { color: dk ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.04)' }, horzLines: { color: dk ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.04)' } },
             crosshair: { mode: 0 },
-            rightPriceScale: { borderColor: dk ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.06)', visible: true },
-            leftPriceScale: { borderColor: dk ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.06)', visible: false },
+            rightPriceScale: { borderColor: dk ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.06)', visible: true, minimumWidth: 85 },
+            leftPriceScale: { borderColor: dk ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.06)', visible: false, minimumWidth: 85 },
             timeScale: {
                 borderColor: dk ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.06)',
                 timeVisible: false,
@@ -836,6 +842,20 @@
         chart = LightweightCharts.createChart(c, theme);
         chart.applyOptions({ width: c.clientWidth, height: c.clientHeight });
         new ResizeObserver(() => chart && chart.applyOptions({ width: c.clientWidth, height: c.clientHeight })).observe(c);
+
+        const cotSeries = activeSeries.filter(s => s.rpt !== 'external' && s.visible !== false);
+        const hasDelta = showDelta && cotSeries.length > 0;
+        const hasProp = cotSeries.length >= 2;
+
+        if (hasDelta || hasProp) {
+            c.style.borderBottomLeftRadius = '0';
+            c.style.borderBottomRightRadius = '0';
+            c.style.borderBottom = 'none';
+        } else {
+            c.style.borderBottomLeftRadius = '';
+            c.style.borderBottomRightRadius = '';
+            c.style.borderBottom = '';
+        }
 
         activeSeries.forEach(s => {
             if (s.visible === false) return; // hidden by eye toggle
@@ -894,9 +914,11 @@
 
         if (hasL) chart.applyOptions({ leftPriceScale: { invertScale: invertL } });
         if (hasR) chart.applyOptions({ rightPriceScale: { invertScale: invertR } });
+
         applyRange(currentRange);
         setupTooltip();
         rebuildPropChart();
+        rebuildDeltaChart();
     }
 
     function applyRange(range) {
@@ -922,9 +944,31 @@
             el.chartBox.style.position = 'relative';
             el.chartBox.appendChild(tip);
         }
+
         chart.subscribeCrosshairMove(p => {
-            if (!p.time || !p.seriesData || p.seriesData.size === 0) { tip.style.opacity = '0'; return; }
+            if (!p.time || !p.seriesData || p.seriesData.size === 0) {
+                tip.style.opacity = '0';
+                if (showDelta && deltaChart) deltaChart.clearCrosshairPosition();
+                if (propChart) propChart.clearCrosshairPosition();
+                return;
+            }
             tip.style.opacity = '1';
+
+            if (showDelta && deltaChart) {
+                const fSeries = activeSeries.find(s => s._deltaHs);
+                if (fSeries && fSeries._deltaHs) {
+                    const sd = p.seriesData.get(fSeries._deltaHs);
+                    const price = sd ? sd.value : 0;
+                    deltaChart.setCrosshairPosition(price, p.time, fSeries._deltaHs);
+                }
+            }
+            if (propChart) {
+                const fSeries = activeSeries.find(s => s._propLs);
+                if (fSeries && fSeries._propLs) {
+                    propChart.setCrosshairPosition(0, p.time, fSeries._propLs);
+                }
+            }
+
             let h = `<div style="margin-bottom:3px;font-weight:600;color:var(--tx-2)">${p.time}</div>`;
             activeSeries.forEach(s => {
                 if (!s._ls) return;
@@ -942,6 +986,165 @@
                 const label = fld ? fld.label : s.key;
                 h += `<div style="display:flex;gap:5px;align-items:center;margin:1px 0"><span style="width:7px;height:7px;border-radius:50%;background:${s.color};flex-shrink:0"></span><span style="color:var(--tx-2)">${label}:</span><span style="font-weight:600;margin-left:auto">${fmt(v)}</span></div>`;
             });
+
+            tip.innerHTML = h;
+        });
+    }
+
+    function rebuildDeltaChart() {
+        if (deltaChart) {
+            if (chartLogicalHandler && chart) {
+                chart.timeScale().unsubscribeVisibleLogicalRangeChange(chartLogicalHandler);
+            }
+            deltaChart.remove();
+            deltaChart = null;
+            syncActive = false;
+        }
+
+        const cotSeries = activeSeries.filter(s => s.rpt !== 'external' && s.visible !== false);
+        if (!showDelta || cotSeries.length === 0) {
+            if (el.deltaChartWrap) el.deltaChartWrap.style.display = 'none';
+            return;
+        }
+
+        if (el.deltaChartWrap) el.deltaChartWrap.style.display = 'block';
+        const c = el.deltaChartBox; c.innerHTML = '';
+
+        if (cotSeries.length >= 2) {
+            c.style.borderBottomLeftRadius = '0';
+            c.style.borderBottomRightRadius = '0';
+            c.style.borderBottom = 'none';
+        } else {
+            c.style.borderBottomLeftRadius = '';
+            c.style.borderBottomRightRadius = '';
+            c.style.borderBottom = '';
+        }
+
+        const theme = getTheme();
+        const hasR = activeSeries.filter(s => s.visible !== false).some(s => s.axis === 'right');
+        const hasL = activeSeries.filter(s => s.visible !== false).some(s => s.axis === 'left');
+
+        theme.rightPriceScale.visible = true; // Zawsze z prawej
+        theme.leftPriceScale.visible = hasL; // By trzymał margines w razie czego
+        theme.timeScale.visible = false; // ukrycie powtarzającej się osi dat
+        // usunięcie wyciszenia horzLine - teraz widać poprzeczkę poziomego crosshaira
+
+        deltaChart = LightweightCharts.createChart(c, theme);
+        deltaChart.applyOptions({ width: c.clientWidth, height: c.clientHeight });
+        new ResizeObserver(() => deltaChart && deltaChart.applyOptions({ width: c.clientWidth, height: c.clientHeight })).observe(c);
+
+        cotSeries.forEach(s => {
+            if (!s._ls) return;
+            const srcData = s._ls.data();
+            const histData = [];
+            for (let i = 0; i < srcData.length; i++) {
+                let diff = 0;
+                if (i > 0) diff = srcData[i].value - srcData[i - 1].value;
+                let cx = s.color;
+                if (cx.startsWith('#') && cx.length === 7) {
+                    const r = parseInt(cx.slice(1, 3), 16);
+                    const g = parseInt(cx.slice(3, 5), 16);
+                    const b = parseInt(cx.slice(5, 7), 16);
+                    cx = `rgba(${r}, ${g}, ${b}, 0.5)`;
+                }
+                histData.push({ time: srcData[i].time, value: diff, color: cx });
+            }
+
+            const inv = (s.axis === 'left' && invertL) || (s.axis === 'right' && invertR);
+            s._deltaInv = inv;
+            const hs = deltaChart.addHistogramSeries({
+                color: s.color,
+                priceScaleId: 'right', // wymuszenie prawej osi, bo jest luz
+                priceFormat: { type: 'volume' }
+            });
+            hs.setData(histData);
+            s._deltaHs = hs;
+        });
+
+        if (hasL) deltaChart.applyOptions({ leftPriceScale: { invertScale: invertL } });
+        if (hasR) deltaChart.applyOptions({ rightPriceScale: { invertScale: invertR } });
+
+        const mainTime = chart.timeScale();
+        const deltaTime = deltaChart.timeScale();
+
+        if (!syncActive) {
+            chartLogicalHandler = (range) => {
+                if (range) {
+                    if (deltaChart) deltaChart.timeScale().setVisibleLogicalRange(range);
+                    if (propChart) propChart.timeScale().setVisibleLogicalRange(range);
+                }
+            };
+            mainTime.subscribeVisibleLogicalRangeChange(chartLogicalHandler);
+
+            deltaTime.subscribeVisibleLogicalRangeChange(range => {
+                if (range) {
+                    if (chart) mainTime.setVisibleLogicalRange(range);
+                    if (propChart) propChart.timeScale().setVisibleLogicalRange(range);
+                }
+            });
+            syncActive = true;
+        }
+
+        const r = mainTime.getVisibleLogicalRange();
+        if (r) deltaTime.setVisibleLogicalRange(r);
+
+        setupDeltaTooltip();
+    }
+
+    function setupDeltaTooltip() {
+        if (!deltaChart) return;
+        let tip = el.deltaChartBox.querySelector('.chart-tip');
+        if (!tip) {
+            tip = document.createElement('div');
+            tip.className = 'chart-tip';
+            tip.style.cssText = 'position:absolute;top:8px;left:8px;z-index:20;background:var(--bg-glass);backdrop-filter:blur(12px);border:1px solid var(--bd);border-radius:var(--r-md);padding:8px 12px;font-size:.72rem;pointer-events:none;color:var(--tx-1);transition:opacity .15s;max-width:340px;';
+            el.deltaChartBox.style.position = 'relative';
+            el.deltaChartBox.appendChild(tip);
+        }
+
+        deltaChart.subscribeCrosshairMove(p => {
+            if (!p.time || !p.seriesData || p.seriesData.size === 0) {
+                tip.style.opacity = '0';
+                if (chart) chart.clearCrosshairPosition();
+                if (propChart) propChart.clearCrosshairPosition();
+                return;
+            }
+            tip.style.opacity = '1';
+
+            if (chart) {
+                const fSeries = activeSeries.find(s => s._ls);
+                if (fSeries && fSeries._ls) {
+                    const sd = p.seriesData.get(fSeries._ls);
+                    const price = sd ? sd.value : 0;
+                    chart.setCrosshairPosition(price, p.time, fSeries._ls);
+                }
+            }
+            if (propChart) {
+                const fSeries = activeSeries.find(s => s._propLs);
+                if (fSeries && fSeries._propLs) {
+                    propChart.setCrosshairPosition(0, p.time, fSeries._propLs);
+                }
+            }
+
+            let h = `<div style="margin-bottom:3px;font-weight:600;color:var(--tx-2)">${p.time}</div>`;
+            h += `<div style="font-size:0.65rem;color:var(--tx-3);text-transform:uppercase;margin-bottom:4px">Zmiana t/t</div>`;
+
+            activeSeries.forEach(s => {
+                if (!s._deltaHs) return;
+                const d = p.seriesData.get(s._deltaHs);
+                if (!d || isNaN(d.value)) return;
+
+                let diffVal = d.value;
+                if (s._deltaInv) diffVal = -diffVal;
+
+                const sign = diffVal > 0 ? '+' : '';
+                const cCls = diffVal > 0 ? '#10b981' : (diffVal < 0 ? '#ef4444' : 'var(--tx-2)');
+                const fld = SERIES[s.rpt].fields.find(f => f.key === s.key);
+                const label = fld ? fld.label : s.key;
+
+                h += `<div style="display:flex;gap:5px;align-items:center;margin:1px 0"><span style="width:7px;height:7px;border-radius:50%;background:${s.color};flex-shrink:0"></span><span style="color:var(--tx-2)">${label}:</span><span style="font-weight:600;margin-left:auto;color:${cCls}">${sign}${fmt(diffVal)}</span></div>`;
+            });
+
             tip.innerHTML = h;
         });
     }
@@ -958,23 +1161,37 @@
         if (el.propChartWrap) el.propChartWrap.style.display = 'block';
         const c = el.propChartBox; c.innerHTML = '';
         const theme = getTheme();
-        theme.rightPriceScale.visible = false;
-        theme.leftPriceScale.visible = false;
-        theme.handleScroll = false;
-        theme.handleScale = false;
+        const hasR = activeSeries.filter(s => s.visible !== false).some(s => s.axis === 'right');
+        const hasL = activeSeries.filter(s => s.visible !== false).some(s => s.axis === 'left');
+
+        theme.rightPriceScale.visible = hasR;
+        theme.leftPriceScale.visible = hasL;
+        theme.timeScale.visible = false;
 
         propChart = LightweightCharts.createChart(c, theme);
         propChart.applyOptions({ width: c.clientWidth, height: c.clientHeight });
-
         new ResizeObserver(() => propChart && propChart.applyOptions({ width: c.clientWidth, height: c.clientHeight })).observe(c);
 
-        if (chart) {
-            chart.timeScale().subscribeVisibleTimeRangeChange(range => {
-                if (propChart && range) {
-                    try { propChart.timeScale().setVisibleRange(range); } catch (e) { }
-                }
-            });
+        let overlays = c.querySelector('.prop-overlays');
+        if (!overlays) {
+            overlays = document.createElement('div');
+            overlays.className = 'prop-overlays';
+            overlays.style.cssText = 'position:absolute; left:0; right:70px; top:0; height:0; pointer-events:none; z-index:10; border-top:1px solid ' + (document.documentElement.getAttribute('data-theme') === 'dark' ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.15)');
+
+            const titleDom = document.createElement('div');
+            titleDom.style.cssText = 'position:absolute; top:4px; left:8px; font-size:0.65rem; font-weight:600; color:var(--tx-3); text-transform:uppercase; z-index:11;';
+            titleDom.innerText = 'Proporcje 100%';
+            overlays.appendChild(titleDom);
+
+            c.appendChild(overlays);
         }
+
+        propChart.timeScale().subscribeVisibleLogicalRangeChange(range => {
+            if (range) {
+                if (chart) chart.timeScale().setVisibleLogicalRange(range);
+                if (deltaChart) deltaChart.timeScale().setVisibleLogicalRange(range);
+            }
+        });
 
         let datesSet = new Set();
         const seriesData = {};
@@ -1066,8 +1283,27 @@
             el.propChartWrap.appendChild(tip);
         }
         propChart.subscribeCrosshairMove(p => {
-            if (!p.time || !p.seriesData || p.seriesData.size === 0) { tip.style.opacity = '0'; return; }
+            if (!p.time || !p.seriesData || p.seriesData.size === 0) {
+                tip.style.opacity = '0';
+                if (chart) chart.clearCrosshairPosition();
+                if (showDelta && deltaChart) deltaChart.clearCrosshairPosition();
+                return;
+            }
             tip.style.opacity = '1';
+
+            if (chart) {
+                const fSeries = activeSeries.find(s => s._ls);
+                if (fSeries && fSeries._ls) {
+                    chart.setCrosshairPosition(0, p.time, fSeries._ls);
+                }
+            }
+            if (showDelta && deltaChart) {
+                const fSeries = activeSeries.find(s => s._deltaHs);
+                if (fSeries && fSeries._deltaHs) {
+                    deltaChart.setCrosshairPosition(0, p.time, fSeries._deltaHs);
+                }
+            }
+
             let h = `<div style="margin-bottom:3px;font-weight:600;color:var(--tx-2)">${p.time}</div>`;
 
             const cotSeries = activeSeries.filter(s => s.rpt !== 'external' && s.visible !== false);
@@ -1429,7 +1665,7 @@
 
         try {
             el.chartLoad.style.display = 'flex';
-            const url = encodeURIComponent(`https://query1.finance.yahoo.com/v8/finance/chart/${ticker}?interval=1wk&range=10y`);
+            const url = encodeURIComponent(`https://query1.finance.yahoo.com/v8/finance/chart/${ticker}?interval=1d&range=10y`);
             // Attempt with corsproxy.io
             const res = await fetch(`https://corsproxy.io/?url=${url}`);
             const data = await res.json();
@@ -1439,11 +1675,28 @@
             const timestamps = resData.timestamp;
             const closes = resData.indicators.quote[0].close;
 
+            // Zbieranie dat z raportów COT
+            let validDates = new Set();
+            for (let k in chartData) {
+                if (k !== 'external' && !k.startsWith('cross_')) {
+                    if (Array.isArray(chartData[k])) {
+                        chartData[k].forEach(row => {
+                            if (row.report_date_as_yyyy_mm_dd) {
+                                validDates.add(row.report_date_as_yyyy_mm_dd.substring(0, 10));
+                            }
+                        });
+                    }
+                }
+            }
+
             const lineData = [];
             for (let i = 0; i < timestamps.length; i++) {
                 if (closes[i] !== null && closes[i] !== undefined) {
                     const dt = new Date(timestamps[i] * 1000);
-                    lineData.push({ time: dt.toISOString().split('T')[0], value: closes[i] });
+                    const dtStr = dt.toISOString().split('T')[0];
+                    if (validDates.has(dtStr)) {
+                        lineData.push({ time: dtStr, value: closes[i] });
+                    }
                 }
             }
 
@@ -1562,6 +1815,14 @@
         const ticker = el.btnTogglePrice.dataset.ticker;
         togglePriceSeries(ticker);
     };
+
+    if (el.btnToggleDelta) {
+        el.btnToggleDelta.onclick = () => {
+            showDelta = !showDelta;
+            el.btnToggleDelta.classList.toggle('active', showDelta);
+            rebuildChart();
+        };
+    }
 
     // Quick Selector Events (cbar-btn)
     if (el.reportTypeBtns) {
@@ -1879,6 +2140,37 @@
     currentRange = '3Y';
     // Set 3Y as default active
     el.ranges.forEach(b => b.classList.toggle('active', b.dataset.range === '3Y'));
+
+    // Resizers setup
+    function setupResizer(resizerId, containerId, minHeight) {
+        const resizer = document.getElementById(resizerId);
+        const container = document.getElementById(containerId);
+        if (!resizer || !container) return;
+
+        let startY, startH;
+        resizer.addEventListener('mousedown', function (e) {
+            e.preventDefault();
+            startY = e.clientY;
+            startH = container.clientHeight;
+            document.body.style.cursor = 'ns-resize';
+
+            function doDrag(e) {
+                const newH = Math.max(minHeight, startH + e.clientY - startY);
+                container.style.height = newH + 'px';
+            }
+            function stopDrag() {
+                document.removeEventListener('mousemove', doDrag);
+                document.removeEventListener('mouseup', stopDrag);
+                document.body.style.cursor = '';
+            }
+            document.addEventListener('mousemove', doDrag);
+            document.addEventListener('mouseup', stopDrag);
+        });
+    }
+
+    setupResizer('main-resizer', 'chart-container', 200);
+    setupResizer('delta-resizer', 'delta-chart-container', 80);
+    setupResizer('prop-resizer', 'prop-chart-container', 80);
 
     // ── Init ──
     loadAll();
