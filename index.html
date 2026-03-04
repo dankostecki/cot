@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="pl" data-theme="dark">
 
 <head>
@@ -148,6 +148,10 @@
                         </div>
                         <div style="flex:1"></div>
                         <div class="cbar-group">
+                            <button id="btn-toggle-delta" class="cbar-btn delta-btn">Zmiana t/t</button>
+                        </div>
+                        <div class="cbar-sep"></div>
+                        <div class="cbar-group">
                             <div class="cbar-range">
                                 <button class="range-btn" data-range="1Y">1Y</button>
                                 <button class="range-btn active" data-range="3Y">3Y</button>
@@ -204,18 +208,38 @@
                 <!-- Chart -->
                 <div class="chart-wrapper" style="position:relative;">
                     <div id="chart-container" class="chart-container"></div>
+                    <div id="main-resizer"
+                        style="height: 8px; cursor: ns-resize; position: absolute; bottom: -4px; left: 0; right: 0; z-index: 50; background: transparent; transition: background 0.2s;"
+                        onmouseenter="this.style.background='var(--bd)'"
+                        onmouseleave="this.style.background='transparent'"></div>
                     <div id="chart-loading" class="chart-loading" style="display:none">
                         <div class="spinner"></div>
                         <p>Ładowanie danych...</p>
                     </div>
                 </div>
 
+                <!-- Delta Chart -->
+                <div class="chart-wrapper" id="delta-chart-wrapper"
+                    style="position:relative; margin-top: 1px; display: none;">
+                    <div id="delta-chart-container" class="chart-container"
+                        style="height: 150px; border-top-left-radius: 0; border-top-right-radius: 0; box-shadow: none;">
+                    </div>
+                    <div id="delta-resizer"
+                        style="height: 8px; cursor: ns-resize; position: absolute; bottom: -4px; left: 0; right: 0; z-index: 50; background: transparent; transition: background 0.2s;"
+                        onmouseenter="this.style.background='var(--bd)'"
+                        onmouseleave="this.style.background='transparent'"></div>
+                </div>
+
                 <!-- Proportion Chart -->
                 <div class="chart-wrapper" id="prop-chart-wrapper"
-                    style="position:relative; margin-top: 15px; display: none;">
-                    <h4 style="font-size: 0.8rem; margin: 0 0 5px 5px; color: var(--tx-2); text-transform: uppercase;">
-                        Proporcje 100%</h4>
-                    <div id="prop-chart-container" class="chart-container" style="height: 180px;"></div>
+                    style="position:relative; margin-top: 1px; margin-bottom: 12px; display: none;">
+                    <div id="prop-chart-container" class="chart-container"
+                        style="height: 180px; border-top-left-radius: 0; border-top-right-radius: 0; box-shadow: none;">
+                    </div>
+                    <div id="prop-resizer"
+                        style="height: 8px; cursor: ns-resize; position: absolute; bottom: -4px; left: 0; right: 0; z-index: 50; background: transparent; transition: background 0.2s;"
+                        onmouseenter="this.style.background='var(--bd)'"
+                        onmouseleave="this.style.background='transparent'"></div>
                 </div>
             </div>
 
