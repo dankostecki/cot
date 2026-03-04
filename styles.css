@@ -2511,3 +2511,28 @@ a {
     border-color: var(--acc);
     color: #fff;
 }
+
+/* Custom Delta Button */
+.delta-btn {
+    border-radius: 20px !important;
+    padding: 4px 14px !important;
+    background: rgba(59, 130, 246, 0.15) !important;
+    color: var(--acc) !important;
+    border: 1px dashed var(--acc) !important;
+    font-weight: 600 !important;
+    transition: all 0.2s ease !important;
+    box-shadow: 0 2px 8px rgba(59, 130, 246, 0.15) !important;
+}
+
+.delta-btn:hover {
+    background: rgba(59, 130, 246, 0.25) !important;
+    border-color: var(--acc-h) !important;
+    color: var(--acc-h) !important;
+}
+
+.delta-btn.active {
+    background: var(--acc) !important;
+    color: #fff !important;
+    border: 1px solid var(--acc) !important;
+    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3) !important;
+}
