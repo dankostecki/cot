@@ -1,7 +1,9 @@
 (function () {
     'use strict';
     const API = 'https://publicreporting.cftc.gov/resource';
-    const EP = { legacy: '6dca-aqww', disaggregated: '72hh-3qpy', tff: 'gpe5-46if' };
+    const EP_FUT = { legacy: '6dca-aqww', disaggregated: '72hh-3qpy', tff: 'gpe5-46if' };
+    const EP_COM = { legacy: 'jun7-fc8e', disaggregated: 'kh3c-gbw2', tff: 'yw9f-hn96' };
+    const EP = EP_FUT; // Keep for backward compat
     const EP_MAP = EP; // Alias for compatibility in some handlers
 
     // ── Yahoo Finance Mappings ──
@@ -173,6 +175,7 @@
         }
     };
     function N(v) { return Number(v) || 0; }
+    function getReportData(rpt) { return (chartData[currentDataType] || {})[rpt]; }
 
     function applySimplifiedSelection(resetFilter = false) {
         if (!currentInst) return;
@@ -236,7 +239,7 @@
                 }
 
                 activeSeries.push({
-                    key: f.key, rpt: targetRpt, axis: defaultAxis, color: finalColor
+                    key: f.key, rpt: targetRpt, axis: defaultAxis, color: finalColor, sourceType: currentDataType
                 });
                 addedColors++;
             }
@@ -264,9 +267,42 @@
     let chart = null;
     let propChart = null;
     let deltaChart = null;
+    let currentDataType = 'fut'; // 'fut' | 'com'
+    let addSeriesSourceType = 'fut'; // source for "Dodaj serię" drawer
     let showDelta = false;
-    let syncActive = false;
-    let chartLogicalHandler = null;
+    let showOptionsImpact = false;
+    let optionsChart = null;
+
+    let _globalTimeScaleData = [];
+
+    const _syncHandlerMap = new Map();
+    let _isSyncing = false;
+    function syncChartsGroup() {
+        const charts = [chart, deltaChart, propChart, optionsChart].filter(Boolean);
+        charts.forEach(c => {
+            const h = _syncHandlerMap.get(c);
+            if (h) {
+                try { c.timeScale().unsubscribeVisibleLogicalRangeChange(h); } catch (e) { }
+                _syncHandlerMap.delete(c);
+            }
+        });
+        if (charts.length < 2) return;
+        charts.forEach(c => {
+            const h = (timeRange) => {
+                if (_isSyncing || (!timeRange)) return;
+                _isSyncing = true;
+                charts.forEach(other => {
+                    if (other !== c) {
+                        try { other.timeScale().setVisibleLogicalRange(timeRange); } catch (e) { }
+                    }
+                });
+                _isSyncing = false;
+            };
+            _syncHandlerMap.set(c, h);
+            c.timeScale().subscribeVisibleLogicalRangeChange(h);
+        });
+    }
+
     let invertL = false, invertR = false;
     let currentInst = null;
     let valueMultiplier = 1;
@@ -294,6 +330,10 @@
         propChartWrap: $('#prop-chart-wrapper'), propChartBox: $('#prop-chart-container'),
         deltaChartWrap: $('#delta-chart-wrapper'), deltaChartBox: $('#delta-chart-container'),
         btnToggleDelta: $('#btn-toggle-delta'),
+        optionsChartWrap: $('#options-chart-wrapper'), optionsChartBox: $('#options-chart-container'),
+        btnToggleOptions: $('#btn-toggle-options'),
+        dataTypeBtns: $$('#data-type-toggle .cbar-btn'),
+        addSrcBtns: $$('#add-series-source-toggle .cbar-btn'),
         chips: $('#series-chips'),
         addBtn: $('#add-series-btn'), addPanel: $('#add-series-panel'),
         addSel: $('#add-series-select'), confirmAdd: $('#confirm-add-series'), cancelAdd: $('#cancel-add-series'),
@@ -665,7 +705,7 @@
         const inst = instruments.find(i => i.code === code);
         if (!inst) return;
         currentInst = inst;
-        chartData = {};
+        chartData = { fut: {}, com: {} };
         activeSeries = [];
         currentQuickFilterKeys = null;
         invertL = invertR = false;
@@ -705,22 +745,23 @@
 
         el.chartLoad.style.display = 'flex';
         try {
-            const fetches = Object.keys(inst.reports).map(async rpt => {
+            const fetches = Object.keys(inst.reports).flatMap(rpt => {
                 const fields = SERIES[rpt].fields.filter(f => !f.comp).map(f => f.key);
                 const sel = ['report_date_as_yyyy_mm_dd', ...fields].join(',');
-                const url = `${API}/${EP[rpt]}.json?$select=${sel}&$where=cftc_contract_market_code='${code}' AND futonly_or_combined='FutOnly'&$order=report_date_as_yyyy_mm_dd ASC&$limit=50000`;
-                const r = await fetch(url);
-                if (!r.ok) return;
-                const data = await r.json();
-
-                // Ensure numbers and compute net
-                data.forEach(row => {
-                    fields.forEach(f => row[f] = N(row[f]));
-                    SERIES[rpt].fields.filter(f => f.comp).forEach(f => {
-                        row[f.key] = f.comp(row);
+                const processData = (data) => {
+                    data.forEach(row => {
+                        fields.forEach(f => row[f] = N(row[f]));
+                        SERIES[rpt].fields.filter(f => f.comp).forEach(f => { row[f.key] = f.comp(row); });
                     });
-                });
-                chartData[rpt] = data;
+                    return data;
+                };
+                const p1 = fetch(`${API}/${EP_FUT[rpt]}.json?$select=${sel}&$where=cftc_contract_market_code='${code}' AND futonly_or_combined='FutOnly'&$order=report_date_as_yyyy_mm_dd ASC&$limit=50000`)
+                    .then(r => r.ok ? r.json() : [])
+                    .then(d => { chartData.fut[rpt] = processData(d); });
+                const p2 = fetch(`${API}/${EP_COM[rpt]}.json?$select=${sel}&$where=cftc_contract_market_code='${code}'&$order=report_date_as_yyyy_mm_dd ASC&$limit=50000`)
+                    .then(r => r.ok ? r.json() : [])
+                    .then(d => { chartData.com[rpt] = processData(d); });
+                return [p1, p2];
             });
             await Promise.all(fetches);
 
@@ -765,14 +806,14 @@
     // Controls 
     // ============================================
     function populateAddSelect() {
+        const src = addSeriesSourceType;
+        const prefix = src === 'com' ? '[COM] ' : '';
         let html = '<option value="">Wybierz serię do dodania...</option>';
         for (const [rpt, cfg] of Object.entries(SERIES)) {
-            if (!chartData[rpt]) continue;
+            if (!(chartData[src] || {})[rpt]) continue;
             html += `<optgroup label="── ${cfg.label} ──">`;
-            let curG = '';
             cfg.fields.forEach(f => {
-                if (f.g !== curG) { curG = f.g; }
-                html += `<option value="${rpt}::${f.key}">${f.label}</option>`;
+                html += `<option value="${rpt}::${f.key}">${prefix}${f.label}</option>`;
             });
             html += `</optgroup>`;
         }
@@ -880,7 +921,7 @@
             // Handle cross-instrument series
             const dataSource = s.crossCode
                 ? (chartData['cross_' + s.crossCode] || {})[s.crossRpt || s.rpt]
-                : chartData[s.rpt];
+                : (chartData[s.sourceType || currentDataType] || {})[s.rpt];
             const data = dataSource;
             if (!data) return;
 
@@ -915,10 +956,20 @@
         if (hasL) chart.applyOptions({ leftPriceScale: { invertScale: invertL } });
         if (hasR) chart.applyOptions({ rightPriceScale: { invertScale: invertR } });
 
+        const gDates = new Set();
+        activeSeries.forEach(s => {
+            if (s.visible !== false && s._ls) {
+                s._ls.data().forEach(d => gDates.add(d.time));
+            }
+        });
+        _globalTimeScaleData = Array.from(gDates).sort((a, b) => a.localeCompare(b)).map(t => ({ time: t }));
+
         applyRange(currentRange);
         setupTooltip();
         rebuildPropChart();
         rebuildDeltaChart();
+        rebuildOptionsImpactChart();
+        syncChartsGroup();
     }
 
     function applyRange(range) {
@@ -950,6 +1001,7 @@
                 tip.style.opacity = '0';
                 if (showDelta && deltaChart) deltaChart.clearCrosshairPosition();
                 if (propChart) propChart.clearCrosshairPosition();
+                if (showOptions && optionsChart) optionsChart.clearCrosshairPosition();
                 return;
             }
             tip.style.opacity = '1';
@@ -957,15 +1009,19 @@
             if (showDelta && deltaChart) {
                 const fSeries = activeSeries.find(s => s._deltaHs);
                 if (fSeries && fSeries._deltaHs) {
-                    const sd = p.seriesData.get(fSeries._deltaHs);
-                    const price = sd ? sd.value : 0;
-                    deltaChart.setCrosshairPosition(price, p.time, fSeries._deltaHs);
+                    deltaChart.setCrosshairPosition(0, p.time, fSeries._deltaHs);
                 }
             }
             if (propChart) {
                 const fSeries = activeSeries.find(s => s._propLs);
                 if (fSeries && fSeries._propLs) {
                     propChart.setCrosshairPosition(0, p.time, fSeries._propLs);
+                }
+            }
+            if (showOptions && optionsChart) {
+                const fSeries = activeSeries.find(s => s._optHs);
+                if (fSeries && fSeries._optHs) {
+                    optionsChart.setCrosshairPosition(0, p.time, fSeries._optHs);
                 }
             }
 
@@ -993,12 +1049,8 @@
 
     function rebuildDeltaChart() {
         if (deltaChart) {
-            if (chartLogicalHandler && chart) {
-                chart.timeScale().unsubscribeVisibleLogicalRangeChange(chartLogicalHandler);
-            }
             deltaChart.remove();
             deltaChart = null;
-            syncActive = false;
         }
 
         const cotSeries = activeSeries.filter(s => s.rpt !== 'external' && s.visible !== false);
@@ -1032,6 +1084,10 @@
         deltaChart = LightweightCharts.createChart(c, theme);
         deltaChart.applyOptions({ width: c.clientWidth, height: c.clientHeight });
         new ResizeObserver(() => deltaChart && deltaChart.applyOptions({ width: c.clientWidth, height: c.clientHeight })).observe(c);
+
+        if (_globalTimeScaleData.length) {
+            deltaChart.addLineSeries({ visible: false, crosshairMarkerVisible: false, priceLineVisible: false, lastValueVisible: false }).setData(_globalTimeScaleData);
+        }
 
         cotSeries.forEach(s => {
             if (!s._ls) return;
@@ -1067,28 +1123,11 @@
         const mainTime = chart.timeScale();
         const deltaTime = deltaChart.timeScale();
 
-        if (!syncActive) {
-            chartLogicalHandler = (range) => {
-                if (range) {
-                    if (deltaChart) deltaChart.timeScale().setVisibleLogicalRange(range);
-                    if (propChart) propChart.timeScale().setVisibleLogicalRange(range);
-                }
-            };
-            mainTime.subscribeVisibleLogicalRangeChange(chartLogicalHandler);
-
-            deltaTime.subscribeVisibleLogicalRangeChange(range => {
-                if (range) {
-                    if (chart) mainTime.setVisibleLogicalRange(range);
-                    if (propChart) propChart.timeScale().setVisibleLogicalRange(range);
-                }
-            });
-            syncActive = true;
-        }
-
         const r = mainTime.getVisibleLogicalRange();
         if (r) deltaTime.setVisibleLogicalRange(r);
 
         setupDeltaTooltip();
+        syncChartsGroup();
     }
 
     function setupDeltaTooltip() {
@@ -1107,6 +1146,7 @@
                 tip.style.opacity = '0';
                 if (chart) chart.clearCrosshairPosition();
                 if (propChart) propChart.clearCrosshairPosition();
+                if (showOptions && optionsChart) optionsChart.clearCrosshairPosition();
                 return;
             }
             tip.style.opacity = '1';
@@ -1114,15 +1154,19 @@
             if (chart) {
                 const fSeries = activeSeries.find(s => s._ls);
                 if (fSeries && fSeries._ls) {
-                    const sd = p.seriesData.get(fSeries._ls);
-                    const price = sd ? sd.value : 0;
-                    chart.setCrosshairPosition(price, p.time, fSeries._ls);
+                    chart.setCrosshairPosition(0, p.time, fSeries._ls);
                 }
             }
             if (propChart) {
                 const fSeries = activeSeries.find(s => s._propLs);
                 if (fSeries && fSeries._propLs) {
                     propChart.setCrosshairPosition(0, p.time, fSeries._propLs);
+                }
+            }
+            if (showOptions && optionsChart) {
+                const fSeries = activeSeries.find(s => s._optHs);
+                if (fSeries && fSeries._optHs) {
+                    optionsChart.setCrosshairPosition(0, p.time, fSeries._optHs);
                 }
             }
 
@@ -1145,6 +1189,146 @@
                 h += `<div style="display:flex;gap:5px;align-items:center;margin:1px 0"><span style="width:7px;height:7px;border-radius:50%;background:${s.color};flex-shrink:0"></span><span style="color:var(--tx-2)">${label}:</span><span style="font-weight:600;margin-left:auto;color:${cCls}">${sign}${fmt(diffVal)}</span></div>`;
             });
 
+            tip.innerHTML = h;
+        });
+    }
+
+    function rebuildOptionsImpactChart() {
+        if (optionsChart) {
+            optionsChart.remove();
+            optionsChart = null;
+        }
+        const cotSeries = activeSeries.filter(s => s.rpt !== 'external' && s.visible !== false);
+        if (!showOptionsImpact || cotSeries.length === 0) {
+            if (el.optionsChartWrap) el.optionsChartWrap.style.display = 'none';
+            return;
+        }
+        const hasComData = cotSeries.some(s => {
+            const com = (chartData.com || {})[s.rpt];
+            return com && com.length > 0;
+        });
+        if (!hasComData) {
+            if (el.optionsChartWrap) el.optionsChartWrap.style.display = 'none';
+            return;
+        }
+        if (el.optionsChartWrap) el.optionsChartWrap.style.display = 'block';
+        const c = el.optionsChartBox; c.innerHTML = '';
+
+        const theme = getTheme();
+        const hasL = activeSeries.filter(s => s.visible !== false).some(s => s.axis === 'left');
+        theme.rightPriceScale.visible = true;
+        theme.leftPriceScale.visible = hasL;
+        theme.timeScale.visible = false;
+
+        optionsChart = LightweightCharts.createChart(c, theme);
+        optionsChart.applyOptions({ width: c.clientWidth, height: c.clientHeight });
+        new ResizeObserver(() => optionsChart && optionsChart.applyOptions({ width: c.clientWidth, height: c.clientHeight })).observe(c);
+
+        if (_globalTimeScaleData.length) {
+            optionsChart.addLineSeries({ visible: false, crosshairMarkerVisible: false, priceLineVisible: false, lastValueVisible: false }).setData(_globalTimeScaleData);
+        }
+
+        cotSeries.forEach(s => {
+            const futData = (chartData.fut || {})[s.rpt];
+            const comData = (chartData.com || {})[s.rpt];
+            if (!futData || !comData) return;
+            const cfg = SERIES[s.rpt];
+            const fld = cfg.fields.find(f => f.key === s.key);
+            if (!fld) return;
+
+            const futMap = {};
+            futData.forEach(row => {
+                const t = row.report_date_as_yyyy_mm_dd && row.report_date_as_yyyy_mm_dd.substring(0, 10);
+                if (t) futMap[t] = fld.comp ? fld.comp(row) : N(row[s.key]);
+            });
+
+            const histData = [];
+            comData.forEach(row => {
+                const t = row.report_date_as_yyyy_mm_dd && row.report_date_as_yyyy_mm_dd.substring(0, 10);
+                if (!t) return;
+                const comVal = fld.comp ? fld.comp(row) : N(row[s.key]);
+                const futVal = futMap[t] !== undefined ? futMap[t] : 0;
+                const impact = (comVal - futVal) * valueMultiplier;
+                let cx = s.color;
+                if (cx.startsWith('#') && cx.length === 7) {
+                    const r = parseInt(cx.slice(1, 3), 16);
+                    const g = parseInt(cx.slice(3, 5), 16);
+                    const b = parseInt(cx.slice(5, 7), 16);
+                    cx = `rgba(${r}, ${g}, ${b}, 0.5)`;
+                }
+                histData.push({ time: t, value: impact, color: cx });
+            });
+            histData.sort((a, b) => a.time.localeCompare(b.time));
+            const dd = []; histData.forEach(p => { if (!dd.length || dd[dd.length - 1].time !== p.time) dd.push(p); });
+
+            const hs = optionsChart.addHistogramSeries({
+                color: s.color,
+                priceScaleId: 'right',
+                priceFormat: { type: 'volume' }
+            });
+            hs.setData(dd);
+            s._optHs = hs;
+        });
+
+        if (chart) {
+            const r = chart.timeScale().getVisibleLogicalRange();
+            if (r) optionsChart.timeScale().setVisibleLogicalRange(r);
+        }
+        setupOptionsTooltip();
+        syncChartsGroup();
+    }
+
+    function setupOptionsTooltip() {
+        if (!optionsChart || !el.optionsChartWrap) return;
+        let tip = el.optionsChartBox.querySelector('.chart-tip');
+        if (!tip) {
+            tip = document.createElement('div');
+            tip.className = 'chart-tip';
+            tip.style.cssText = 'position:absolute;top:8px;left:8px;z-index:20;background:var(--bg-glass);backdrop-filter:blur(12px);border:1px solid var(--bd);border-radius:var(--r-md);padding:8px 12px;font-size:.72rem;pointer-events:none;color:var(--tx-1);transition:opacity .15s;max-width:340px;';
+            el.optionsChartBox.style.position = 'relative';
+            el.optionsChartBox.appendChild(tip);
+        }
+        optionsChart.subscribeCrosshairMove(p => {
+            if (!p.time || !p.seriesData || p.seriesData.size === 0) {
+                tip.style.opacity = '0';
+                if (chart) chart.clearCrosshairPosition();
+                if (showDelta && deltaChart) deltaChart.clearCrosshairPosition();
+                if (propChart) propChart.clearCrosshairPosition();
+                return;
+            }
+            tip.style.opacity = '1';
+
+            if (chart) {
+                const fSeries = activeSeries.find(s => s._ls);
+                if (fSeries && fSeries._ls) {
+                    chart.setCrosshairPosition(0, p.time, fSeries._ls);
+                }
+            }
+            if (showDelta && deltaChart) {
+                const fSeries = activeSeries.find(s => s._deltaHs);
+                if (fSeries && fSeries._deltaHs) {
+                    deltaChart.setCrosshairPosition(0, p.time, fSeries._deltaHs);
+                }
+            }
+            if (propChart) {
+                const fSeries = activeSeries.find(s => s._propLs);
+                if (fSeries && fSeries._propLs) {
+                    propChart.setCrosshairPosition(0, p.time, fSeries._propLs);
+                }
+            }
+            let h = `<div style="margin-bottom:3px;font-weight:600;color:var(--tx-2)">${p.time}</div>`;
+            h += `<div style="font-size:0.65rem;color:var(--tx-3);text-transform:uppercase;margin-bottom:4px">Wpływ Opcji (COM − FUT)</div>`;
+            const cotSeries = activeSeries.filter(s => s.rpt !== 'external' && s.visible !== false);
+            cotSeries.forEach(s => {
+                if (!s._optHs) return;
+                const d = p.seriesData.get(s._optHs);
+                if (!d || isNaN(d.value)) return;
+                const sign = d.value > 0 ? '+' : '';
+                const cCls = d.value > 0 ? '#10b981' : (d.value < 0 ? '#ef4444' : 'var(--tx-2)');
+                const fld = SERIES[s.rpt].fields.find(f => f.key === s.key);
+                const label = fld ? fld.label : s.key;
+                h += `<div style="display:flex;gap:5px;align-items:center;margin:1px 0"><span style="width:7px;height:7px;border-radius:50%;background:${s.color};flex-shrink:0"></span><span style="color:var(--tx-2)">${label}:</span><span style="font-weight:600;margin-left:auto;color:${cCls}">${sign}${fmt(d.value)}</span></div>`;
+            });
             tip.innerHTML = h;
         });
     }
@@ -1172,6 +1356,10 @@
         propChart.applyOptions({ width: c.clientWidth, height: c.clientHeight });
         new ResizeObserver(() => propChart && propChart.applyOptions({ width: c.clientWidth, height: c.clientHeight })).observe(c);
 
+        if (_globalTimeScaleData.length) {
+            propChart.addLineSeries({ visible: false, crosshairMarkerVisible: false, priceLineVisible: false, lastValueVisible: false }).setData(_globalTimeScaleData);
+        }
+
         let overlays = c.querySelector('.prop-overlays');
         if (!overlays) {
             overlays = document.createElement('div');
@@ -1186,20 +1374,15 @@
             c.appendChild(overlays);
         }
 
-        propChart.timeScale().subscribeVisibleLogicalRangeChange(range => {
-            if (range) {
-                if (chart) chart.timeScale().setVisibleLogicalRange(range);
-                if (deltaChart) deltaChart.timeScale().setVisibleLogicalRange(range);
-            }
-        });
-
         let datesSet = new Set();
         const seriesData = {};
 
         cotSeries.forEach(s => {
             const cfg = SERIES[s.rpt];
             const fld = cfg.fields.find(f => f.key === s.key);
-            const data = s.crossCode ? (chartData['cross_' + s.crossCode] || {})[s.crossRpt || s.rpt] : chartData[s.rpt];
+            const data = s.crossCode
+                ? (chartData['cross_' + s.crossCode] || {})[s.crossRpt || s.rpt]
+                : (chartData[s.sourceType || currentDataType] || {})[s.rpt];
             if (!data) return;
 
             seriesData[s.key] = {};
@@ -1258,19 +1441,13 @@
             scaleMargins: { top: 0, bottom: 0 }
         });
 
-        const now = new Date();
-        const from = new Date(now);
-        if (currentRange === '1Y') from.setFullYear(now.getFullYear() - 1);
-        else if (currentRange === '3Y') from.setFullYear(now.getFullYear() - 3);
-        else if (currentRange === '5Y') from.setFullYear(now.getFullYear() - 5);
-        else if (currentRange === 'YTD') from.setMonth(0, 1);
-        const toStr = now.toISOString().substring(0, 10);
-        const frStr = from.toISOString().substring(0, 10);
-        if (currentRange !== 'MAX') {
-            try { propChart.timeScale().setVisibleRange({ from: frStr, to: toStr }); } catch (e) { propChart.timeScale().fitContent(); }
+        if (chart) {
+            const r = chart.timeScale().getVisibleLogicalRange();
+            if (r) propChart.timeScale().setVisibleLogicalRange(r);
         }
 
         setupPropTooltip();
+        syncChartsGroup();
     }
 
     function setupPropTooltip() {
@@ -1287,6 +1464,7 @@
                 tip.style.opacity = '0';
                 if (chart) chart.clearCrosshairPosition();
                 if (showDelta && deltaChart) deltaChart.clearCrosshairPosition();
+                if (showOptions && optionsChart) optionsChart.clearCrosshairPosition();
                 return;
             }
             tip.style.opacity = '1';
@@ -1301,6 +1479,12 @@
                 const fSeries = activeSeries.find(s => s._deltaHs);
                 if (fSeries && fSeries._deltaHs) {
                     deltaChart.setCrosshairPosition(0, p.time, fSeries._deltaHs);
+                }
+            }
+            if (showOptions && optionsChart) {
+                const fSeries = activeSeries.find(s => s._optHs);
+                if (fSeries && fSeries._optHs) {
+                    optionsChart.setCrosshairPosition(0, p.time, fSeries._optHs);
                 }
             }
 
@@ -1345,7 +1529,8 @@
                 label = s.label || s.key;
             } else {
                 const fld = SERIES[s.rpt].fields.find(f => f.key === s.key);
-                label = fld ? fld.label : s.key;
+                const srcPrefix = s.sourceType === 'com' ? '[COM] ' : '';
+                label = srcPrefix + (fld ? fld.label : s.key);
             }
 
             const axisBadge = s.axis === 'right' ? 'P' : 'L';
@@ -1457,10 +1642,10 @@
         const val = el.addSel.value;
         if (!val) return;
         const [rpt, key] = val.split('::');
-        if (activeSeries.some(s => s.rpt === rpt && s.key === key)) return;
+        if (activeSeries.some(s => s.rpt === rpt && s.key === key && s.sourceType === addSeriesSourceType)) return;
         const axBtn = document.querySelector('.axis-btn.active');
         const axis = axBtn ? axBtn.dataset.axis : 'left';
-        activeSeries.push({ key, rpt, axis, color: COLORS[activeSeries.length % COLORS.length] });
+        activeSeries.push({ key, rpt, axis, color: COLORS[activeSeries.length % COLORS.length], sourceType: addSeriesSourceType });
         renderChips();
         rebuildChart();
         el.addPanel.style.display = 'none';
@@ -1473,11 +1658,11 @@
     function renderReportingTable() {
         const prio = ['tff', 'disaggregated', 'legacy'];
         let repMatch = null;
-        for (let r of prio) { if (chartData[r] && chartData[r].length >= 1) { repMatch = r; break; } }
+        for (let r of prio) { if (getReportData(r) && getReportData(r).length >= 1) { repMatch = r; break; } }
 
         if (!repMatch) { el.summary.style.display = 'none'; return; }
 
-        const data = chartData[repMatch];
+        const data = getReportData(repMatch);
         const latest = data[data.length - 1];
         const periodOffset = tablePeriod === 'ww' ? 1 : tablePeriod === 'mm' ? 4 : 52;
         const prev = data.length > periodOffset ? data[data.length - 1 - periodOffset] : null;
@@ -1585,11 +1770,12 @@
     function renderPieCharts() {
         const prio = ['tff', 'disaggregated', 'legacy'];
         let repMatch = null;
-        for (let r of prio) { if (chartData[r] && chartData[r].length) { repMatch = r; break; } }
+        for (let r of prio) { if (getReportData(r) && getReportData(r).length) { repMatch = r; break; } }
 
         if (!repMatch) { el.composition.style.display = 'none'; return; }
 
-        const latest = chartData[repMatch][chartData[repMatch].length - 1];
+        const repData = getReportData(repMatch);
+        const latest = repData[repData.length - 1];
         const fields = SERIES[repMatch].fields;
         const PIE_COLORS = ['#3b82f6', '#ef4444', '#10b981', '#f59e0b', '#8b5cf6', '#06b6d4', '#ec4899', '#84cc16', '#f97316', '#6366f1', '#e11d48', '#64748b'];
 
@@ -1677,15 +1863,14 @@
 
             // Zbieranie dat z raportów COT
             let validDates = new Set();
-            for (let k in chartData) {
-                if (k !== 'external' && !k.startsWith('cross_')) {
-                    if (Array.isArray(chartData[k])) {
-                        chartData[k].forEach(row => {
-                            if (row.report_date_as_yyyy_mm_dd) {
-                                validDates.add(row.report_date_as_yyyy_mm_dd.substring(0, 10));
-                            }
-                        });
-                    }
+            for (let k in (chartData.fut || {})) {
+                const arr = chartData.fut[k];
+                if (Array.isArray(arr)) {
+                    arr.forEach(row => {
+                        if (row.report_date_as_yyyy_mm_dd) {
+                            validDates.add(row.report_date_as_yyyy_mm_dd.substring(0, 10));
+                        }
+                    });
                 }
             }
 
@@ -1822,6 +2007,46 @@
             el.btnToggleDelta.classList.toggle('active', showDelta);
             rebuildChart();
         };
+    }
+
+    if (el.btnToggleOptions) {
+        el.btnToggleOptions.onclick = () => {
+            showOptionsImpact = !showOptionsImpact;
+            el.btnToggleOptions.classList.toggle('active', showOptionsImpact);
+            rebuildOptionsImpactChart();
+        };
+    }
+
+    // Data Type toggle (Futures / Combined)
+    if (el.dataTypeBtns && el.dataTypeBtns.length) {
+        el.dataTypeBtns.forEach(b => {
+            b.onclick = () => {
+                const dtype = b.dataset.dtype;
+                if (dtype === currentDataType) return;
+                currentDataType = dtype;
+                el.dataTypeBtns.forEach(x => x.classList.remove('active'));
+                b.classList.add('active');
+                // Update all non-external, non-cross activeSeries to new source
+                activeSeries.forEach(s => {
+                    if (s.rpt !== 'external' && !s.crossCode) s.sourceType = dtype;
+                });
+                applySimplifiedSelection();
+                renderReportingTable();
+                renderPieCharts();
+            };
+        });
+    }
+
+    // Add-series source toggle (Futures Only / Combined)
+    if (el.addSrcBtns && el.addSrcBtns.length) {
+        el.addSrcBtns.forEach(b => {
+            b.onclick = () => {
+                addSeriesSourceType = b.dataset.src;
+                el.addSrcBtns.forEach(x => x.classList.remove('active'));
+                b.classList.add('active');
+                populateAddSelect();
+            };
+        });
     }
 
     // Quick Selector Events (cbar-btn)
@@ -2170,6 +2395,7 @@
 
     setupResizer('main-resizer', 'chart-container', 200);
     setupResizer('delta-resizer', 'delta-chart-container', 80);
+    setupResizer('options-resizer', 'options-chart-container', 80);
     setupResizer('prop-resizer', 'prop-chart-container', 80);
 
     // ── Init ──

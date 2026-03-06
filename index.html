@@ -129,6 +129,13 @@
                         </div>
                         <div class="cbar-sep"></div>
                         <div class="cbar-group">
+                            <div class="cbar-toggle" id="data-type-toggle">
+                                <button class="cbar-btn active" data-dtype="fut">Futures</button>
+                                <button class="cbar-btn" data-dtype="com">Combined</button>
+                            </div>
+                        </div>
+                        <div class="cbar-sep"></div>
+                        <div class="cbar-group">
                             <div class="cbar-toggle" id="position-type-toggle">
                                 <button class="cbar-btn active" data-pos="net">Netto</button>
                                 <button class="cbar-btn" data-pos="long">+ Long</button>
@@ -149,6 +156,7 @@
                         <div style="flex:1"></div>
                         <div class="cbar-group">
                             <button id="btn-toggle-delta" class="cbar-btn delta-btn">Zmiana t/t</button>
+                            <button id="btn-toggle-options" class="cbar-btn delta-btn">Wpływ Opcji</button>
                         </div>
                         <div class="cbar-sep"></div>
                         <div class="cbar-group">
@@ -225,6 +233,18 @@
                         style="height: 150px; border-top-left-radius: 0; border-top-right-radius: 0; box-shadow: none;">
                     </div>
                     <div id="delta-resizer"
+                        style="height: 8px; cursor: ns-resize; position: absolute; bottom: -4px; left: 0; right: 0; z-index: 50; background: transparent; transition: background 0.2s;"
+                        onmouseenter="this.style.background='var(--bd)'"
+                        onmouseleave="this.style.background='transparent'"></div>
+                </div>
+
+                <!-- Options Impact Chart -->
+                <div class="chart-wrapper" id="options-chart-wrapper"
+                    style="position:relative; margin-top: 1px; display: none;">
+                    <div id="options-chart-container" class="chart-container"
+                        style="height: 150px; border-top-left-radius: 0; border-top-right-radius: 0; box-shadow: none;">
+                    </div>
+                    <div id="options-resizer"
                         style="height: 8px; cursor: ns-resize; position: absolute; bottom: -4px; left: 0; right: 0; z-index: 50; background: transparent; transition: background 0.2s;"
                         onmouseenter="this.style.background='var(--bd)'"
                         onmouseleave="this.style.background='transparent'"></div>
@@ -325,6 +345,11 @@
         <!-- Tab: Ta sama seria -->
         <div class="drawer-panel" id="dtab-same">
             <div class="spop-section">
+                <div class="spop-label">Źródło danych</div>
+                <div class="cbar-toggle" id="add-series-source-toggle" style="margin-bottom:10px">
+                    <button class="cbar-btn active" data-src="fut">Futures Only</button>
+                    <button class="cbar-btn" data-src="com">Combined</button>
+                </div>
                 <div class="spop-label">Wybierz serię z tego instrumentu</div>
                 <select id="add-series-select" class="styled-select"></select>
                 <div class="axis-toggle" style="margin-top:8px;">
