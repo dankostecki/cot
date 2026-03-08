@@ -1,0 +1,38 @@
+name: Update ICE COT Data
+
+on:
+  # Co piątek o 22:00 UTC = 23:00 CET (zimą) — po publikacji ICE (~21:30 UTC)
+  schedule:
+    - cron: '0 22 * * 5'
+  # Możliwość ręcznego uruchomienia z panelu GitHub Actions
+  workflow_dispatch:
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install dependencies
+        run: pip install requests
+
+      - name: Run ICE data update script
+        run: python .github/scripts/update_ice_data.py
+
+      - name: Commit updated data (if changed)
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add data/ice/
+          git diff --cached --quiet \
+            && echo "Brak zmian w danych ICE." \
+            || (git commit -m "chore: update ICE COT data [skip ci]" && git push)

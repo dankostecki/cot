@@ -57,8 +57,21 @@
         '054642': 'HE=F',    // LEAN HOGS
     };
 
+    // ── ICE Futures Europe instruments (dane ze statycznych JSON w repo) ──
+    const ICE_INSTRUMENTS_DEF = [
+        { code: 'ice_brent',  name: 'ICE Brent Crude Futures',    exchange: 'ICE Futures Europe', units: '1,000 barrels',     cat: 'energy', dataPath: 'brent',  yfTicker: 'BZ=F' },
+        { code: 'ice_gasoil', name: 'ICE Gasoil Futures',          exchange: 'ICE Futures Europe', units: '100 metric tonnes', cat: 'energy', dataPath: 'gasoil', yfTicker: null   },
+        { code: 'ice_dubai',  name: 'ICE Dubai 1st Line Futures',  exchange: 'ICE Futures Europe', units: '1,000 barrels',     cat: 'energy', dataPath: 'dubai',  yfTicker: null   },
+        { code: 'ice_sugar',  name: 'ICE White Sugar Futures',     exchange: 'ICE Futures Europe', units: '50 metric tonnes',  cat: 'softs',  dataPath: 'sugar',  yfTicker: null   },
+        { code: 'ice_cocoa',  name: 'ICE Cocoa Futures',           exchange: 'ICE Futures Europe', units: '10 metric tonnes',  cat: 'softs',  dataPath: 'cocoa',  yfTicker: null   },
+        { code: 'ice_coffee', name: 'ICE Robusta Coffee Futures',  exchange: 'ICE Futures Europe', units: '10 metric tonnes',  cat: 'softs',  dataPath: 'coffee', yfTicker: null   },
+        { code: 'ice_wheat',  name: 'ICE Wheat Futures',           exchange: 'ICE Futures Europe', units: '100 metric tonnes', cat: 'grains', dataPath: 'wheat',  yfTicker: null   },
+    ];
+
     function getYFTicker(code, name) {
         if (YF_MAP[code]) return YF_MAP[code];
+        const iceDef = ICE_INSTRUMENTS_DEF.find(d => d.code === code);
+        if (iceDef && iceDef.yfTicker) return iceDef.yfTicker;
         const s = name.toUpperCase();
         // VIX / Volatility — sprawdź przed innymi
         if (s.includes('VIX') || (s.includes('VOLATILITY') && s.includes('S&P'))) return '^VIX';
@@ -405,6 +418,22 @@
         });
 
         instruments = Object.values(map);
+
+        // Dołącz instrumenty ICE (statyczne JSON w repo)
+        ICE_INSTRUMENTS_DEF.forEach(def => {
+            instruments.push({
+                code: def.code,
+                name: def.name,
+                exchange: def.exchange,
+                units: def.units,
+                cat: def.cat,
+                reports: { disaggregated: true },
+                source: 'ice',
+                dataPath: def.dataPath,
+                isPop: false,
+            });
+        });
+
         instruments.forEach(i => { i.isPop = isPopular(i); });
         instruments.sort((a, b) => a.name.localeCompare(b.name));
 
@@ -563,11 +592,13 @@
         const generateCards = (items) => {
             return items.map(i => {
                 const iconStr = catIconsHtml[i.cat] || catIconsHtml.other;
-                const badges = Object.keys(i.reports).map(r => {
-                    const cls = r === 'legacy' ? 'leg' : r === 'disaggregated' ? 'dis' : 'tff';
-                    const lbl = r === 'legacy' ? 'LEG' : r === 'disaggregated' ? 'DIS' : 'TFF';
-                    return `<span class="mini-badge ${cls}">${lbl}</span>`;
-                }).join('');
+                const badges = i.source === 'ice'
+                    ? '<span class="mini-badge ice">ICE</span>'
+                    : Object.keys(i.reports).map(r => {
+                        const cls = r === 'legacy' ? 'leg' : r === 'disaggregated' ? 'dis' : 'tff';
+                        const lbl = r === 'legacy' ? 'LEG' : r === 'disaggregated' ? 'DIS' : 'TFF';
+                        return `<span class="mini-badge ${cls}">${lbl}</span>`;
+                    }).join('');
 
                 return `<div class="instrument-card instrument-item ${animate ? 'animate-in' : ''}" data-code="${i.code}" tabindex="0">
                     <div class="card-icon" style="color:var(--tx-2); width:20px; height:20px;">${iconStr}</div>
@@ -738,32 +769,58 @@
         }
 
         // Report badges
-        el.reportBadges.innerHTML = Object.keys(inst.reports).map(r => {
-            const cls = r === 'legacy' ? 'leg' : r === 'disaggregated' ? 'dis' : 'tff';
-            return `<span class="report-badge ${cls}">${SERIES[r].label}</span>`;
-        }).join('');
+        if (inst.source === 'ice') {
+            el.reportBadges.innerHTML =
+                '<span class="report-badge ice">ICE Futures Europe</span>' +
+                '<span class="report-badge dis">Disaggregated</span>';
+        } else {
+            el.reportBadges.innerHTML = Object.keys(inst.reports).map(r => {
+                const cls = r === 'legacy' ? 'leg' : r === 'disaggregated' ? 'dis' : 'tff';
+                return `<span class="report-badge ${cls}">${SERIES[r].label}</span>`;
+            }).join('');
+        }
 
         el.chartLoad.style.display = 'flex';
         try {
-            const fetches = Object.keys(inst.reports).flatMap(rpt => {
-                const fields = SERIES[rpt].fields.filter(f => !f.comp).map(f => f.key);
-                const sel = ['report_date_as_yyyy_mm_dd', ...fields].join(',');
-                const processData = (data) => {
+            if (inst.source === 'ice') {
+                // Ładowanie z pre-generowanych plików JSON (GitHub Actions)
+                const base = `./data/ice/${inst.dataPath}`;
+                const processICE = data => {
+                    const fields = SERIES.disaggregated.fields.filter(f => !f.comp).map(f => f.key);
                     data.forEach(row => {
                         fields.forEach(f => row[f] = N(row[f]));
-                        SERIES[rpt].fields.filter(f => f.comp).forEach(f => { row[f.key] = f.comp(row); });
+                        SERIES.disaggregated.fields.filter(f => f.comp).forEach(f => { row[f.key] = f.comp(row); });
                     });
                     return data;
                 };
-                const p1 = fetch(`${API}/${EP_FUT[rpt]}.json?$select=${sel}&$where=cftc_contract_market_code='${code}' AND futonly_or_combined='FutOnly'&$order=report_date_as_yyyy_mm_dd ASC&$limit=50000`)
-                    .then(r => r.ok ? r.json() : [])
-                    .then(d => { chartData.fut[rpt] = processData(d); });
-                const p2 = fetch(`${API}/${EP_COM[rpt]}.json?$select=${sel}&$where=cftc_contract_market_code='${code}'&$order=report_date_as_yyyy_mm_dd ASC&$limit=50000`)
-                    .then(r => r.ok ? r.json() : [])
-                    .then(d => { chartData.com[rpt] = processData(d); });
-                return [p1, p2];
-            });
-            await Promise.all(fetches);
+                const [futRes, comRes] = await Promise.all([
+                    fetch(`${base}/fut.json`),
+                    fetch(`${base}/com.json`),
+                ]);
+                if (futRes.ok) chartData.fut.disaggregated = processICE(await futRes.json());
+                if (comRes.ok) chartData.com.disaggregated = processICE(await comRes.json());
+            } else {
+                // CFTC Socrata API
+                const fetches = Object.keys(inst.reports).flatMap(rpt => {
+                    const fields = SERIES[rpt].fields.filter(f => !f.comp).map(f => f.key);
+                    const sel = ['report_date_as_yyyy_mm_dd', ...fields].join(',');
+                    const processData = (data) => {
+                        data.forEach(row => {
+                            fields.forEach(f => row[f] = N(row[f]));
+                            SERIES[rpt].fields.filter(f => f.comp).forEach(f => { row[f.key] = f.comp(row); });
+                        });
+                        return data;
+                    };
+                    const p1 = fetch(`${API}/${EP_FUT[rpt]}.json?$select=${sel}&$where=cftc_contract_market_code='${code}' AND futonly_or_combined='FutOnly'&$order=report_date_as_yyyy_mm_dd ASC&$limit=50000`)
+                        .then(r => r.ok ? r.json() : [])
+                        .then(d => { chartData.fut[rpt] = processData(d); });
+                    const p2 = fetch(`${API}/${EP_COM[rpt]}.json?$select=${sel}&$where=cftc_contract_market_code='${code}'&$order=report_date_as_yyyy_mm_dd ASC&$limit=50000`)
+                        .then(r => r.ok ? r.json() : [])
+                        .then(d => { chartData.com[rpt] = processData(d); });
+                    return [p1, p2];
+                });
+                await Promise.all(fetches);
+            }
 
             populateAddSelect();
             applySimplifiedSelection();
@@ -797,9 +854,17 @@
         el.instrView.classList.add('active');
         if (chart) { chart.remove(); chart = null; }
         if (propChart) { propChart.remove(); propChart = null; }
-        chartData = {};
+        if (deltaChart) { deltaChart.remove(); deltaChart = null; }
+        if (optionsChart) { optionsChart.remove(); optionsChart = null; }
+        if (el.deltaChartWrap) el.deltaChartWrap.style.display = 'none';
+        if (el.optionsChartWrap) el.optionsChartWrap.style.display = 'none';
+        showDelta = false;
+        showOptionsImpact = false;
+        if (el.btnToggleDelta) el.btnToggleDelta.classList.remove('active');
+        if (el.btnToggleOptions) el.btnToggleOptions.classList.remove('active');
+        chartData = { fut: {}, com: {} };
         activeSeries = [];
-        renderGrid(false); // refresh favs without staggering animation
+        renderGrid(false);
     }
 
     // ============================================

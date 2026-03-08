@@ -906,6 +906,18 @@ a {
     color: var(--green);
 }
 
+/* ICE Futures Europe — amber */
+.report-badge.ice {
+    background: rgba(245, 158, 11, 0.12);
+    color: var(--amber);
+    border: 1px solid rgba(245, 158, 11, 0.2);
+}
+
+.mini-badge.ice {
+    background: rgba(245, 158, 11, 0.15);
+    color: var(--amber);
+}
+
 /* ═══ Section Cards ═══ */
 .section-card {
     background: var(--bg-card);
