@@ -86,7 +86,9 @@ def fetch_year(year: int) -> list[dict]:
     print(f"  Pobieranie {year}...", end=" ", flush=True)
     r = requests.get(url, timeout=60)
     r.raise_for_status()
-    rows = list(csv.DictReader(StringIO(r.text)))
+    # utf-8-sig usuwa BOM (\ufeff) obecny w niektórych plikach ICE (np. 2026)
+    content = r.content.decode("utf-8-sig")
+    rows = list(csv.DictReader(StringIO(content)))
     print(f"{len(rows)} wierszy")
     return rows
 
