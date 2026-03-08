@@ -424,7 +424,7 @@
         }
     }
 
-    function applyI18n() {
+    function applyI18n() { try {
         const set = (sel, key) => { const e = document.querySelector(sel); if (e) e.textContent = t(key); };
         // Compact bar buttons
         set('#report-type-toggle .cbar-btn[data-type="legacy"]', 'Ogólny');
@@ -477,7 +477,7 @@
         if (foot) foot.innerHTML = currentLang === 'en'
             ? `Data from CFTC public registry: <a href="https://www.cftc.gov/MarketReports/CommitmentsofTraders/index.htm" target="_blank" rel="noopener">Commitments of Traders</a> via Socrata API · For analytical and educational purposes only`
             : `Dane pochodzą z rejestru otwartych pozycji CFTC: <a href="https://www.cftc.gov/MarketReports/CommitmentsofTraders/index.htm" target="_blank" rel="noopener">Commitments of Traders</a> dostępnego przez API Socrata · Wyłącznie do celów analitycznych i edukacyjnych`;
-    }
+    } catch(e) { console.warn('applyI18n error:', e); } }
 
     // ── State ──
     let instruments = [];
@@ -649,7 +649,7 @@
 
         renderCats();
         renderGrid();
-        applyI18n();
+        try { applyI18n(); } catch(e) { console.warn('i18n init error:', e); }
     }
 
     function classify(text) {
