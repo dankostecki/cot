@@ -1074,7 +1074,7 @@
                 tip.style.opacity = '0';
                 if (showDelta && deltaChart) deltaChart.clearCrosshairPosition();
                 if (propChart) propChart.clearCrosshairPosition();
-                if (showOptions && optionsChart) optionsChart.clearCrosshairPosition();
+                if (showOptionsImpact && optionsChart) optionsChart.clearCrosshairPosition();
                 return;
             }
             tip.style.opacity = '1';
@@ -1091,7 +1091,7 @@
                     propChart.setCrosshairPosition(0, p.time, fSeries._propLs);
                 }
             }
-            if (showOptions && optionsChart) {
+            if (showOptionsImpact && optionsChart) {
                 const fSeries = activeSeries.find(s => s._optHs);
                 if (fSeries && fSeries._optHs) {
                     optionsChart.setCrosshairPosition(0, p.time, fSeries._optHs);
@@ -1219,7 +1219,7 @@
                 tip.style.opacity = '0';
                 if (chart) chart.clearCrosshairPosition();
                 if (propChart) propChart.clearCrosshairPosition();
-                if (showOptions && optionsChart) optionsChart.clearCrosshairPosition();
+                if (showOptionsImpact && optionsChart) optionsChart.clearCrosshairPosition();
                 return;
             }
             tip.style.opacity = '1';
@@ -1236,7 +1236,7 @@
                     propChart.setCrosshairPosition(0, p.time, fSeries._propLs);
                 }
             }
-            if (showOptions && optionsChart) {
+            if (showOptionsImpact && optionsChart) {
                 const fSeries = activeSeries.find(s => s._optHs);
                 if (fSeries && fSeries._optHs) {
                     optionsChart.setCrosshairPosition(0, p.time, fSeries._optHs);
@@ -1537,7 +1537,7 @@
                 tip.style.opacity = '0';
                 if (chart) chart.clearCrosshairPosition();
                 if (showDelta && deltaChart) deltaChart.clearCrosshairPosition();
-                if (showOptions && optionsChart) optionsChart.clearCrosshairPosition();
+                if (showOptionsImpact && optionsChart) optionsChart.clearCrosshairPosition();
                 return;
             }
             tip.style.opacity = '1';
@@ -1554,7 +1554,7 @@
                     deltaChart.setCrosshairPosition(0, p.time, fSeries._deltaHs);
                 }
             }
-            if (showOptions && optionsChart) {
+            if (showOptionsImpact && optionsChart) {
                 const fSeries = activeSeries.find(s => s._optHs);
                 if (fSeries && fSeries._optHs) {
                     optionsChart.setCrosshairPosition(0, p.time, fSeries._optHs);
