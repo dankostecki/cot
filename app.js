@@ -411,9 +411,17 @@
         const url = new URL(location.href);
         lang === 'pl' ? url.searchParams.delete('lang') : url.searchParams.set('lang', lang);
         history.replaceState({}, '', url);
-        // Update lang toggle buttons UI
         $$('#lang-toggle .cbar-btn').forEach(b => b.classList.toggle('active', b.dataset.lang === lang));
         applyI18n();
+        // Re-render dynamic parts after language switch
+        if (typeof renderCats === 'function') renderCats();
+        if (typeof renderGrid === 'function') renderGrid(false);
+        if (typeof renderChips === 'function') renderChips();
+        if (currentInst) {
+            if (typeof populateAddSelect === 'function') populateAddSelect();
+            if (typeof renderReportingTable === 'function') renderReportingTable();
+            if (typeof renderPieCharts === 'function') renderPieCharts();
+        }
     }
 
     function applyI18n() {
@@ -469,10 +477,6 @@
         if (foot) foot.innerHTML = currentLang === 'en'
             ? `Data from CFTC public registry: <a href="https://www.cftc.gov/MarketReports/CommitmentsofTraders/index.htm" target="_blank" rel="noopener">Commitments of Traders</a> via Socrata API · For analytical and educational purposes only`
             : `Dane pochodzą z rejestru otwartych pozycji CFTC: <a href="https://www.cftc.gov/MarketReports/CommitmentsofTraders/index.htm" target="_blank" rel="noopener">Commitments of Traders</a> dostępnego przez API Socrata · Wyłącznie do celów analitycznych i edukacyjnych`;
-        // Re-render JS-generated parts
-        renderChips();
-        if (currentInst) { populateAddSelect(); renderReportingTable(); renderPieCharts(); }
-        renderCats();
     }
 
     // ── State ──
@@ -645,6 +649,7 @@
 
         renderCats();
         renderGrid();
+        applyI18n();
     }
 
     function classify(text) {
@@ -2686,7 +2691,6 @@
     setupResizer('prop-resizer', 'prop-chart-container', 80);
 
     // ── Init ──
-    applyI18n();
     loadAll();
 })();
 
