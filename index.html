@@ -32,24 +32,19 @@
                 </div>
             </div>
             <div class="header-actions">
-                <button id="theme-toggle" class="icon-btn" aria-label="Przełącz motyw">
-                    <svg class="sun-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                        stroke-width="2">
-                        <circle cx="12" cy="12" r="5" />
-                        <line x1="12" y1="1" x2="12" y2="3" />
-                        <line x1="12" y1="21" x2="12" y2="23" />
-                        <line x1="4.22" y1="4.22" x2="5.64" y2="5.64" />
-                        <line x1="18.36" y1="18.36" x2="19.78" y2="19.78" />
-                        <line x1="1" y1="12" x2="3" y2="12" />
-                        <line x1="21" y1="12" x2="23" y2="12" />
-                        <line x1="4.22" y1="19.78" x2="5.64" y2="18.36" />
-                        <line x1="18.36" y1="5.64" x2="19.78" y2="4.22" />
-                    </svg>
-                    <svg class="moon-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                        stroke-width="2">
-                        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
-                    </svg>
-                </button>
+                <div class="hsp-wrap">
+                    <!-- Przycisk otwierający globalny drawer ustawień -->
+                    <button id="global-settings-toggle" class="icon-btn" aria-label="Ustawienia aplikacji"
+                        title="Ustawienia (Język / Motyw)">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2">
+                            <circle cx="12" cy="12" r="10" />
+                            <path
+                                d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" />
+                            <path d="M2 12h20" />
+                        </svg>
+                    </button>
+                </div>
             </div>
         </div>
     </header>
@@ -392,6 +387,55 @@
                     <button class="cross-axis-btn" data-axis="right">Prawa oś</button>
                 </div>
                 <button id="confirm-cross-series" class="confirm-btn" style="margin-top:8px;">Dodaj serię</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ═══ GLOBE DRAWER — Global Settings (Theme, Lang) ═══ -->
+    <div class="drawer" id="global-settings-drawer">
+        <div class="drawer-header">
+            <div class="drawer-header-bar">
+                <span class="drawer-title" id="global-drawer-title" data-pl="Ustawienia Aplikacji">Ustawienia
+                    Aplikacji</span>
+                <button class="drawer-close" id="global-drawer-close"><svg width="14" height="14" viewBox="0 0 24 24"
+                        fill="none" stroke="currentColor" stroke-width="2.5">
+                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                    </svg></button>
+            </div>
+        </div>
+        <div class="drawer-panel active">
+            <div class="spop-section">
+                <div class="spop-label" data-pl="Język / Language">Język / Language</div>
+                <div class="cbar-toggle" id="global-lang-toggle">
+                    <button class="cbar-btn active" data-lang="pl">PL</button>
+                    <button class="cbar-btn" data-lang="en">EN</button>
+                </div>
+            </div>
+            <div class="spop-section">
+                <div class="spop-label" id="global-theme-label" data-pl="Motyw">Motyw</div>
+                <div class="cbar-toggle" id="global-theme-toggle">
+                    <button class="cbar-btn" data-theme="light">
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2" style="vertical-align:-2px;margin-right:2px">
+                            <circle cx="12" cy="12" r="5" />
+                            <line x1="12" y1="1" x2="12" y2="3" />
+                            <line x1="12" y1="21" x2="12" y2="23" />
+                            <line x1="4.22" y1="4.22" x2="5.64" y2="5.64" />
+                            <line x1="18.36" y1="18.36" x2="19.78" y2="19.78" />
+                            <line x1="1" y1="12" x2="3" y2="12" />
+                            <line x1="21" y1="12" x2="23" y2="12" />
+                        </svg>
+                        <span id="label-light" data-pl="Jasny">Jasny</span>
+                    </button>
+                    <button class="cbar-btn" data-theme="dark">
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2" style="vertical-align:-2px;margin-right:2px">
+                            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
+                        </svg>
+                        <span id="label-dark" data-pl="Ciemny">Ciemny</span>
+                    </button>
+                </div>
             </div>
         </div>
     </div>

@@ -59,13 +59,13 @@
 
     // ── ICE Futures Europe instruments (dane ze statycznych JSON w repo) ──
     const ICE_INSTRUMENTS_DEF = [
-        { code: 'ice_brent',  name: 'ICE Brent Crude Futures',    exchange: 'ICE Futures Europe', units: '1,000 barrels',     cat: 'energy', dataPath: 'brent',  yfTicker: 'BZ=F' },
-        { code: 'ice_gasoil', name: 'ICE Gasoil Futures',          exchange: 'ICE Futures Europe', units: '100 metric tonnes', cat: 'energy', dataPath: 'gasoil', yfTicker: null   },
-        { code: 'ice_dubai',  name: 'ICE Dubai 1st Line Futures',  exchange: 'ICE Futures Europe', units: '1,000 barrels',     cat: 'energy', dataPath: 'dubai',  yfTicker: null   },
-        { code: 'ice_sugar',  name: 'ICE White Sugar Futures',     exchange: 'ICE Futures Europe', units: '50 metric tonnes',  cat: 'softs',  dataPath: 'sugar',  yfTicker: null   },
-        { code: 'ice_cocoa',  name: 'ICE Cocoa Futures',           exchange: 'ICE Futures Europe', units: '10 metric tonnes',  cat: 'softs',  dataPath: 'cocoa',  yfTicker: null   },
-        { code: 'ice_coffee', name: 'ICE Robusta Coffee Futures',  exchange: 'ICE Futures Europe', units: '10 metric tonnes',  cat: 'softs',  dataPath: 'coffee', yfTicker: null   },
-        { code: 'ice_wheat',  name: 'ICE Wheat Futures',           exchange: 'ICE Futures Europe', units: '100 metric tonnes', cat: 'grains', dataPath: 'wheat',  yfTicker: null   },
+        { code: 'ice_brent', name: 'ICE Brent Crude Futures', exchange: 'ICE Futures Europe', units: '1,000 barrels', cat: 'energy', dataPath: 'brent', yfTicker: 'BZ=F' },
+        { code: 'ice_gasoil', name: 'ICE Gasoil Futures', exchange: 'ICE Futures Europe', units: '100 metric tonnes', cat: 'energy', dataPath: 'gasoil', yfTicker: null },
+        { code: 'ice_dubai', name: 'ICE Dubai 1st Line Futures', exchange: 'ICE Futures Europe', units: '1,000 barrels', cat: 'energy', dataPath: 'dubai', yfTicker: null },
+        { code: 'ice_sugar', name: 'ICE White Sugar Futures', exchange: 'ICE Futures Europe', units: '50 metric tonnes', cat: 'softs', dataPath: 'sugar', yfTicker: null },
+        { code: 'ice_cocoa', name: 'ICE Cocoa Futures', exchange: 'ICE Futures Europe', units: '10 metric tonnes', cat: 'softs', dataPath: 'cocoa', yfTicker: null },
+        { code: 'ice_coffee', name: 'ICE Robusta Coffee Futures', exchange: 'ICE Futures Europe', units: '10 metric tonnes', cat: 'softs', dataPath: 'coffee', yfTicker: null },
+        { code: 'ice_wheat', name: 'ICE Wheat Futures', exchange: 'ICE Futures Europe', units: '100 metric tonnes', cat: 'grains', dataPath: 'wheat', yfTicker: null },
     ];
 
     function getYFTicker(code, name) {
@@ -329,23 +329,23 @@
         'Raport Szczegółowy (Disaggregated)': 'Disaggregated Report',
         'Raport Finansowy (TFF)': 'Financial Report (TFF)',
         // SERIES fields – Legacy
-        'Duzi Spekulanci — Pozycje długie': 'Large Speculators — Long',
-        'Duzi Spekulanci — Pozycje krótkie': 'Large Speculators — Short',
-        'Duzi Spekulanci — Pozycja netto': 'Large Speculators — Net',
-        'Podmioty Komercyjne — Pozycje długie': 'Commercials — Long',
-        'Podmioty Komercyjne — Pozycje krótkie': 'Commercials — Short',
-        'Podmioty Komercyjne — Pozycja netto': 'Commercials — Net',
-        'Drobni Spekulanci — Pozycje długie': 'Small Speculators — Long',
-        'Drobni Spekulanci — Pozycje krótkie': 'Small Speculators — Short',
-        'Drobni Spekulanci — Pozycja netto': 'Small Speculators — Net',
+        'Duzi Spekulanci — Pozycje długie': 'Non-Commercial — Long',
+        'Duzi Spekulanci — Pozycje krótkie': 'Non-Commercial — Short',
+        'Duzi Spekulanci — Pozycja netto': 'Non-Commercial — Net',
+        'Podmioty Komercyjne — Pozycje długie': 'Commercial — Long',
+        'Podmioty Komercyjne — Pozycje krótkie': 'Commercial — Short',
+        'Podmioty Komercyjne — Pozycja netto': 'Commercial — Net',
+        'Drobni Spekulanci — Pozycje długie': 'Nonreportable — Long',
+        'Drobni Spekulanci — Pozycje krótkie': 'Nonreportable — Short',
+        'Drobni Spekulanci — Pozycja netto': 'Nonreportable — Net',
         'Otwarte Pozycje (Open Interest)': 'Open Interest',
         // SERIES groups – Legacy
-        'Duzi Spekulanci': 'Large Speculators', 'Podmioty Komercyjne': 'Commercials',
-        'Drobni Spekulanci': 'Small Speculators', 'Rynek Ogółem': 'Total Market',
+        'Duzi Spekulanci': 'Non-Commercials', 'Podmioty Komercyjne': 'Commercials',
+        'Drobni Spekulanci': 'Nonreportable', 'Rynek Ogółem': 'Total Market',
         // SERIES fields – Disaggregated
-        'Producenci i Handlarze — Pozycje długie': 'Prod. & Merchants — Long',
-        'Producenci i Handlarze — Pozycje krótkie': 'Prod. & Merchants — Short',
-        'Producenci i Handlarze — Pozycja netto': 'Prod. & Merchants — Net',
+        'Producenci i Handlarze — Pozycje długie': 'Producer/Merchant — Long',
+        'Producenci i Handlarze — Pozycje krótkie': 'Producer/Merchant — Short',
+        'Producenci i Handlarze — Pozycja netto': 'Producer/Merchant — Net',
         'Dealerzy Swap — Pozycje długie': 'Swap Dealers — Long',
         'Dealerzy Swap — Pozycje krótkie': 'Swap Dealers — Short',
         'Dealerzy Swap — Pozycja netto': 'Swap Dealers — Net',
@@ -356,9 +356,9 @@
         'Pozostałe Duże Podmioty — Pozycje krótkie': 'Other Reportables — Short',
         'Pozostałe Duże Podmioty — Pozycja netto': 'Other Reportables — Net',
         // SERIES groups – Disaggregated
-        'Producenci i Handlarze': 'Prod. & Merchants',
-        'Dealerzy Swap (Banki)': 'Swap Dealers (Banks)',
-        'Fundusze Zarządzane (CTA/CTD)': 'Managed Money (CTA/CTD)',
+        'Producenci i Handlarze': 'Producer/Merchant',
+        'Dealerzy Swap (Banki)': 'Swap Dealers',
+        'Fundusze Zarządzane (CTA/CTD)': 'Managed Money',
         'Pozostałe Duże Podmioty': 'Other Reportables',
         // SERIES fields – TFF
         'Dealerzy i Pośrednicy — Pozycje długie': 'Dealer Intermediary — Long',
@@ -371,9 +371,9 @@
         'Fundusze Lewarowane — Pozycje krótkie': 'Leveraged Funds — Short',
         'Fundusze Lewarowane — Pozycja netto': 'Leveraged Funds — Net',
         // SERIES groups – TFF
-        'Dealerzy i Pośrednicy (Banki)': 'Dealer Intermediary (Banks)',
-        'Zarządzający Aktywami (Fundusze)': 'Asset Manager (Funds)',
-        'Fundusze Lewarowane': 'Leveraged Funds', 'Inne': 'Other',
+        'Dealerzy i Pośrednicy (Banki)': 'Dealer Intermediary',
+        'Zarządzający Aktywami (Fundusze)': 'Asset Manager',
+        'Fundusze Lewarowane': 'Leveraged Funds', 'Inne': 'Other Reportables',
         // Categories
         'Najpopularniejsze': 'Most Popular', 'Waluty': 'Currencies',
         'Kryptowaluty': 'Crypto', 'Indeksy Giełdowe': 'Stock Indices',
@@ -424,60 +424,62 @@
         }
     }
 
-    function applyI18n() { try {
-        const set = (sel, key) => { const e = document.querySelector(sel); if (e) e.textContent = t(key); };
-        // Compact bar buttons
-        set('#report-type-toggle .cbar-btn[data-type="legacy"]', 'Ogólny');
-        set('#report-type-toggle .cbar-btn[data-type="detailed"]', 'Szczegółowy');
-        set('#position-type-toggle .cbar-btn[data-pos="net"]', 'Netto');
-        set('#btn-toggle-delta', 'Zmiana t/t');
-        set('#btn-toggle-options', 'Wpływ Opcji');
-        // Filtry button has SVG — update only text node
-        const qfBtn = $('#quick-filters-toggle');
-        if (qfBtn) {
-            let tn = qfBtn.lastChild;
-            while (tn && tn.nodeType !== 3) tn = tn.previousSibling;
-            if (tn) tn.textContent = ' ' + t('Filtry');
-        }
-        // Drawer
-        set('.drawer-title', 'Ustawienia & Serie');
-        $$('.drawer-tab').forEach(tab => {
-            const m = { settings: 'Ustawienia', same: 'Dodaj serię', other: 'Inny instrument' };
-            const key = m[tab.dataset.dtab];
-            if (!key) return;
-            let tn = tab.lastChild;
-            while (tn && tn.nodeType !== 3) tn = tn.previousSibling;
-            if (tn) tn.textContent = ' ' + t(key);
-        });
-        $$('.spop-label').forEach(el => { const tr = EN[el.textContent.trim()]; if (tr) el.textContent = currentLang === 'en' ? tr : el.dataset.pl || el.textContent; });
-        // Store PL text on first call for round-trip
-        $$('.spop-label').forEach(el => { if (!el.dataset.pl) el.dataset.pl = el.textContent; el.textContent = t(el.dataset.pl); });
-        set('#val-mul-1', 'Liczba kontraktów');
-        const mulBtn = $('#val-mul-size'); if (mulBtn) { const sp = mulBtn.querySelector('#mul-label'); mulBtn.textContent = t('Wartość nominalna') + ' '; if (sp) mulBtn.appendChild(sp); }
-        set('#btn-invert-1', 'Odwróć lewą ↕');
-        set('#btn-invert-2', 'Odwróć prawą ↕');
-        $$('.axis-btn').forEach(b => { const m = { left: 'Lewa oś', right: 'Prawa oś' }; if (m[b.dataset.axis]) b.textContent = t(m[b.dataset.axis]); });
-        $$('.cross-axis-btn').forEach(b => { const m = { left: 'Lewa oś', right: 'Prawa oś' }; if (m[b.dataset.axis]) b.textContent = t(m[b.dataset.axis]); });
-        // Source toggles
-        $$('#add-series-source-toggle .cbar-btn').forEach(b => { if (b.dataset.src === 'fut') b.textContent = t('Futures Only'); if (b.dataset.src === 'com') b.textContent = t('Combined'); });
-        // Section headers
-        set('#market-composition .section-header h3', 'Struktura Otwartych Pozycji');
-        set('#data-summary .section-header h3', 'Dane Liczbowe Pozycji');
-        // Period toggle
-        set('.table-period-label', 'Zmiana względem:');
-        $$('.period-btn').forEach(b => { const m = { ww: 'Poprzedniego tygodnia', mm: 'Poprzedniego miesiąca', yy: 'Poprzedniego roku' }; if (m[b.dataset.period]) b.textContent = t(m[b.dataset.period]); });
-        // Search placeholder
-        if (el.search) el.search.placeholder = currentLang === 'en'
-            ? 'Search instrument... (e.g. Gold, EUR, Bitcoin, Oil, Wheat)'
-            : 'Szukaj instrumentu... (np. Gold, EUR, Bitcoin, Ropa, Pszenica)';
-        // Header subtitle
-        set('.subtitle', 'Analiza przepływu kapitału (CFTC)');
-        // Footer
-        const foot = document.querySelector('#app-footer p');
-        if (foot) foot.innerHTML = currentLang === 'en'
-            ? `Data from CFTC public registry: <a href="https://www.cftc.gov/MarketReports/CommitmentsofTraders/index.htm" target="_blank" rel="noopener">Commitments of Traders</a> via Socrata API · For analytical and educational purposes only`
-            : `Dane pochodzą z rejestru otwartych pozycji CFTC: <a href="https://www.cftc.gov/MarketReports/CommitmentsofTraders/index.htm" target="_blank" rel="noopener">Commitments of Traders</a> dostępnego przez API Socrata · Wyłącznie do celów analitycznych i edukacyjnych`;
-    } catch(e) { console.warn('applyI18n error:', e); } }
+    function applyI18n() {
+        try {
+            const set = (sel, key) => { const e = document.querySelector(sel); if (e) e.textContent = t(key); };
+            // Compact bar buttons
+            set('#report-type-toggle .cbar-btn[data-type="legacy"]', 'Ogólny');
+            set('#report-type-toggle .cbar-btn[data-type="detailed"]', 'Szczegółowy');
+            set('#position-type-toggle .cbar-btn[data-pos="net"]', 'Netto');
+            set('#btn-toggle-delta', 'Zmiana t/t');
+            set('#btn-toggle-options', 'Wpływ Opcji');
+            // Filtry button has SVG — update only text node
+            const qfBtn = $('#quick-filters-toggle');
+            if (qfBtn) {
+                let tn = qfBtn.lastChild;
+                while (tn && tn.nodeType !== 3) tn = tn.previousSibling;
+                if (tn) tn.textContent = ' ' + t('Filtry');
+            }
+            // Drawer
+            set('.drawer-title', 'Ustawienia & Serie');
+            $$('.drawer-tab').forEach(tab => {
+                const m = { settings: 'Ustawienia', same: 'Dodaj serię', other: 'Inny instrument' };
+                const key = m[tab.dataset.dtab];
+                if (!key) return;
+                let tn = tab.lastChild;
+                while (tn && tn.nodeType !== 3) tn = tn.previousSibling;
+                if (tn) tn.textContent = ' ' + t(key);
+            });
+            $$('.spop-label').forEach(el => { const tr = EN[el.textContent.trim()]; if (tr) el.textContent = currentLang === 'en' ? tr : el.dataset.pl || el.textContent; });
+            // Store PL text on first call for round-trip
+            $$('.spop-label').forEach(el => { if (!el.dataset.pl) el.dataset.pl = el.textContent; el.textContent = t(el.dataset.pl); });
+            set('#val-mul-1', 'Liczba kontraktów');
+            const mulBtn = $('#val-mul-size'); if (mulBtn) { const sp = mulBtn.querySelector('#mul-label'); mulBtn.textContent = t('Wartość nominalna') + ' '; if (sp) mulBtn.appendChild(sp); }
+            set('#btn-invert-1', 'Odwróć lewą ↕');
+            set('#btn-invert-2', 'Odwróć prawą ↕');
+            $$('.axis-btn').forEach(b => { const m = { left: 'Lewa oś', right: 'Prawa oś' }; if (m[b.dataset.axis]) b.textContent = t(m[b.dataset.axis]); });
+            $$('.cross-axis-btn').forEach(b => { const m = { left: 'Lewa oś', right: 'Prawa oś' }; if (m[b.dataset.axis]) b.textContent = t(m[b.dataset.axis]); });
+            // Source toggles
+            $$('#add-series-source-toggle .cbar-btn').forEach(b => { if (b.dataset.src === 'fut') b.textContent = t('Futures Only'); if (b.dataset.src === 'com') b.textContent = t('Combined'); });
+            // Section headers
+            set('#market-composition .section-header h3', 'Struktura Otwartych Pozycji');
+            set('#data-summary .section-header h3', 'Dane Liczbowe Pozycji');
+            // Period toggle
+            set('.table-period-label', 'Zmiana względem:');
+            $$('.period-btn').forEach(b => { const m = { ww: 'Poprzedniego tygodnia', mm: 'Poprzedniego miesiąca', yy: 'Poprzedniego roku' }; if (m[b.dataset.period]) b.textContent = t(m[b.dataset.period]); });
+            // Search placeholder
+            if (el.search) el.search.placeholder = currentLang === 'en'
+                ? 'Search instrument... (e.g. Gold, EUR, Bitcoin, Oil, Wheat)'
+                : 'Szukaj instrumentu... (np. Gold, EUR, Bitcoin, Ropa, Pszenica)';
+            // Header subtitle
+            set('.subtitle', 'Analiza przepływu kapitału (CFTC)');
+            // Footer
+            const foot = document.querySelector('#app-footer p');
+            if (foot) foot.innerHTML = currentLang === 'en'
+                ? `Data from CFTC public registry: <a href="https://www.cftc.gov/MarketReports/CommitmentsofTraders/index.htm" target="_blank" rel="noopener">Commitments of Traders</a> via Socrata API · For analytical and educational purposes only`
+                : `Dane pochodzą z rejestru otwartych pozycji CFTC: <a href="https://www.cftc.gov/MarketReports/CommitmentsofTraders/index.htm" target="_blank" rel="noopener">Commitments of Traders</a> dostępnego przez API Socrata · Wyłącznie do celów analitycznych i edukacyjnych`;
+        } catch (e) { console.warn('applyI18n error:', e); }
+    }
 
     // ── State ──
     let instruments = [];
@@ -536,7 +538,7 @@
 
     // ── DOM ──
     const el = {
-        themeBtn: $('#theme-toggle'), instrView: $('#instrument-view'), chartView: $('#chart-view'),
+        themeBtn: $('#global-settings-toggle'), instrView: $('#instrument-view'), chartView: $('#chart-view'),
         search: $('#instrument-search'), clearSearch: $('#clear-search'), grid: $('#instruments-grid'),
         catTabs: $('#category-tabs'),
         catMobileToggle: $('#cat-mobile-toggle'), catMobileLabel: $('#cat-mobile-label'),
@@ -571,21 +573,52 @@
         crossSelect: $('#cross-series-select'), confirmCross: $('#confirm-cross-series'),
         fullscreenBtn: $('#fullscreen-btn'), chartWrapper: $('.chart-wrapper'),
         fullscreenContainer: $('#fullscreen-container'),
-        qfToggle: $('#quick-filters-toggle'), qfMenu: $('#quick-filters-menu'), qfOptions: $('#qf-options')
+        qfToggle: $('#quick-filters-toggle'), qfMenu: $('#quick-filters-menu'), qfOptions: $('#qf-options'),
+        globalDrawer: $('#global-settings-drawer'), globalDrawerClose: $('#global-drawer-close'),
+        globalThemeBtns: $$('#global-theme-toggle .cbar-btn'), globalLangBtns: $$('#global-lang-toggle .cbar-btn')
     };
 
     // ============================================
-    // Theme
+    // Theme & Global Settings Drawer
     // ============================================
-    const savedTheme = localStorage.getItem('cot-theme');
-    if (savedTheme) document.documentElement.setAttribute('data-theme', savedTheme);
-    el.themeBtn.onclick = () => {
+    const savedTheme = localStorage.getItem('cot-theme') || 'dark';
+    document.documentElement.setAttribute('data-theme', savedTheme);
+
+    function updateThemeUI() {
         const cur = document.documentElement.getAttribute('data-theme');
-        const nxt = cur === 'dark' ? 'light' : 'dark';
-        document.documentElement.setAttribute('data-theme', nxt);
-        localStorage.setItem('cot-theme', nxt);
-        if (chart) rebuildChart();
+        el.globalThemeBtns.forEach(b => b.classList.toggle('active', b.dataset.theme === cur));
+    }
+    updateThemeUI();
+
+    el.globalThemeBtns.forEach(btn => {
+        btn.onclick = () => {
+            const nxt = btn.dataset.theme;
+            if (document.documentElement.getAttribute('data-theme') === nxt) return;
+            document.documentElement.setAttribute('data-theme', nxt);
+            localStorage.setItem('cot-theme', nxt);
+            updateThemeUI();
+            if (chart) rebuildChart();
+        };
+    });
+
+    el.themeBtn.onclick = () => {
+        el.drawerBackdrop.classList.add('open');
+        el.globalDrawer.classList.add('open');
     };
+
+    el.globalDrawerClose.onclick = () => {
+        el.drawerBackdrop.classList.remove('open');
+        el.globalDrawer.classList.remove('open');
+    };
+
+    el.globalLangBtns.forEach(btn => {
+        btn.onclick = () => {
+            setLang(btn.dataset.lang);
+            el.globalLangBtns.forEach(b => b.classList.toggle('active', b.dataset.lang === currentLang));
+            // Trigger dynamic update globally
+            applyI18n();
+        };
+    });
 
     // ============================================
     // Load instruments
@@ -649,7 +682,7 @@
 
         renderCats();
         renderGrid();
-        try { applyI18n(); } catch(e) { console.warn('i18n init error:', e); }
+        try { applyI18n(); } catch (e) { console.warn('i18n init error:', e); }
     }
 
     function classify(text) {
@@ -2391,6 +2424,7 @@
     }
     function closeDrawer() {
         el.drawer.classList.remove('open');
+        if (el.globalDrawer) el.globalDrawer.classList.remove('open');
         el.drawerBackdrop.classList.remove('open');
         el.settingsToggle.classList.remove('open');
     }
