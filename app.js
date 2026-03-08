@@ -270,6 +270,211 @@
 
     const COLORS = ['#3b82f6', '#ef4444', '#10b981', '#f59e0b', '#8b5cf6', '#06b6d4', '#ec4899', '#84cc16', '#f97316', '#6366f1', '#14b8a6', '#e11d48'];
 
+    // ── i18n ─────────────────────────────────────────────────────────────────
+    const EN = {
+        // App
+        'Analiza przepływu kapitału (CFTC)': 'Capital Flow Analysis (CFTC)',
+        // Compact bar
+        'Ogólny': 'General', 'Szczegółowy': 'Detailed', 'Netto': 'Net',
+        'Zmiana t/t': 'WoW Change', 'Wpływ Opcji': 'Options Impact', 'Filtry': 'Filters',
+        // Drawer
+        'Ustawienia & Serie': 'Settings & Series', 'Ustawienia': 'Settings',
+        'Dodaj serię': 'Add Series', 'Inny instrument': 'Other Instrument',
+        'Język / Language': 'Language',
+        'Jednostka pozycji': 'Position Unit', 'Liczba kontraktów': 'Contracts',
+        'Wartość nominalna': 'Nominal Value', 'Skala osi': 'Scale',
+        'Odwróć lewą ↕': 'Invert Left ↕', 'Odwróć prawą ↕': 'Invert Right ↕',
+        'Źródło danych': 'Data Source',
+        'Wybierz serię z tego instrumentu': 'Select series for this instrument',
+        'Lewa oś': 'Left Axis', 'Prawa oś': 'Right Axis',
+        'Szukaj instrumentu': 'Search', 'Seria z:': 'Series from:',
+        // Section headers
+        'Struktura Otwartych Pozycji': 'Open Interest Structure',
+        'Dane Liczbowe Pozycji': 'Position Data',
+        // Table
+        'Zmiana względem:': 'Change vs.:',
+        'Poprzedniego tygodnia': 'Previous week',
+        'Poprzedniego miesiąca': 'Previous month',
+        'Poprzedniego roku': 'Previous year',
+        'Raport z dnia:': 'Report date:',
+        'Porównanie:': 'Comparison:',
+        'Brak danych z poprzedniego okresu': 'No prior period data',
+        'Grupa uczestników': 'Participant Group',
+        'Pozycje długie (Long)': 'Long Positions',
+        'Pozycje krótkie (Short)': 'Short Positions',
+        'Pozycja netto (Net)': 'Net Position',
+        // Pie charts
+        'Pozycje długie': 'Long Positions', 'Pozycje krótkie': 'Short Positions',
+        'Łączny Open Interest': 'Total Open Interest', 'kontraktów': 'contracts',
+        // Tooltips / charts
+        'Wpływ Opcji (COM − FUT)': 'Options Impact (COM − FUT)',
+        'Proporcje 100%': '100% Stacked',
+        // Chips
+        'Widoczne serie:': 'Visible series:',
+        // Quick filters
+        'Wszystkie grupy (Reset)': 'All Groups (Reset)',
+        'Szybkie filtry': 'Quick Filters',
+        'Tylko Non-Commercial (Duzi)': 'Non-Commercial Only',
+        'Tylko Commercial (Komercyjni)': 'Commercial Only',
+        'Tylko Nonreportable (Drobni)': 'Nonreportable Only',
+        'Producenci i Dealerzy (PMPU)': 'Producers & Merchants (PMPU)',
+        'Dealerzy Swap (Swap)': 'Swap Dealers',
+        'Zarządzający Kapitałem (Money)': 'Managed Money',
+        'Inni Raportujący (Other)': 'Other Reportables',
+        'Dealer Intermediary': 'Dealer Intermediary',
+        'Zarządzający Majątkiem (Asset)': 'Asset Manager',
+        'Fundusze Lewarowane (Lev)': 'Leveraged Funds',
+        // SERIES report labels
+        'Ogólny (Legacy)': 'General (Legacy)',
+        'Raport Szczegółowy (Disaggregated)': 'Disaggregated Report',
+        'Raport Finansowy (TFF)': 'Financial Report (TFF)',
+        // SERIES fields – Legacy
+        'Duzi Spekulanci — Pozycje długie': 'Large Speculators — Long',
+        'Duzi Spekulanci — Pozycje krótkie': 'Large Speculators — Short',
+        'Duzi Spekulanci — Pozycja netto': 'Large Speculators — Net',
+        'Podmioty Komercyjne — Pozycje długie': 'Commercials — Long',
+        'Podmioty Komercyjne — Pozycje krótkie': 'Commercials — Short',
+        'Podmioty Komercyjne — Pozycja netto': 'Commercials — Net',
+        'Drobni Spekulanci — Pozycje długie': 'Small Speculators — Long',
+        'Drobni Spekulanci — Pozycje krótkie': 'Small Speculators — Short',
+        'Drobni Spekulanci — Pozycja netto': 'Small Speculators — Net',
+        'Otwarte Pozycje (Open Interest)': 'Open Interest',
+        // SERIES groups – Legacy
+        'Duzi Spekulanci': 'Large Speculators', 'Podmioty Komercyjne': 'Commercials',
+        'Drobni Spekulanci': 'Small Speculators', 'Rynek Ogółem': 'Total Market',
+        // SERIES fields – Disaggregated
+        'Producenci i Handlarze — Pozycje długie': 'Prod. & Merchants — Long',
+        'Producenci i Handlarze — Pozycje krótkie': 'Prod. & Merchants — Short',
+        'Producenci i Handlarze — Pozycja netto': 'Prod. & Merchants — Net',
+        'Dealerzy Swap — Pozycje długie': 'Swap Dealers — Long',
+        'Dealerzy Swap — Pozycje krótkie': 'Swap Dealers — Short',
+        'Dealerzy Swap — Pozycja netto': 'Swap Dealers — Net',
+        'Fundusze Zarządzane — Pozycje długie': 'Managed Money — Long',
+        'Fundusze Zarządzane — Pozycje krótkie': 'Managed Money — Short',
+        'Fundusze Zarządzane — Pozycja netto': 'Managed Money — Net',
+        'Pozostałe Duże Podmioty — Pozycje długie': 'Other Reportables — Long',
+        'Pozostałe Duże Podmioty — Pozycje krótkie': 'Other Reportables — Short',
+        'Pozostałe Duże Podmioty — Pozycja netto': 'Other Reportables — Net',
+        // SERIES groups – Disaggregated
+        'Producenci i Handlarze': 'Prod. & Merchants',
+        'Dealerzy Swap (Banki)': 'Swap Dealers (Banks)',
+        'Fundusze Zarządzane (CTA/CTD)': 'Managed Money (CTA/CTD)',
+        'Pozostałe Duże Podmioty': 'Other Reportables',
+        // SERIES fields – TFF
+        'Dealerzy i Pośrednicy — Pozycje długie': 'Dealer Intermediary — Long',
+        'Dealerzy i Pośrednicy — Pozycje krótkie': 'Dealer Intermediary — Short',
+        'Dealerzy i Pośrednicy — Pozycja netto': 'Dealer Intermediary — Net',
+        'Zarządzający Aktywami — Pozycje długie': 'Asset Manager — Long',
+        'Zarządzający Aktywami — Pozycje krótkie': 'Asset Manager — Short',
+        'Zarządzający Aktywami — Pozycja netto': 'Asset Manager — Net',
+        'Fundusze Lewarowane — Pozycje długie': 'Leveraged Funds — Long',
+        'Fundusze Lewarowane — Pozycje krótkie': 'Leveraged Funds — Short',
+        'Fundusze Lewarowane — Pozycja netto': 'Leveraged Funds — Net',
+        // SERIES groups – TFF
+        'Dealerzy i Pośrednicy (Banki)': 'Dealer Intermediary (Banks)',
+        'Zarządzający Aktywami (Fundusze)': 'Asset Manager (Funds)',
+        'Fundusze Lewarowane': 'Leveraged Funds', 'Inne': 'Other',
+        // Categories
+        'Najpopularniejsze': 'Most Popular', 'Waluty': 'Currencies',
+        'Kryptowaluty': 'Crypto', 'Indeksy Giełdowe': 'Stock Indices',
+        'Obligacje i Stopy Procentowe': 'Bonds & Interest Rates',
+        'Surowce Energetyczne': 'Energy', 'Metale Szlachetne i Przemysłowe': 'Metals',
+        'Zboża i Rośliny Uprawne': 'Grains & Crops',
+        'Hodowla i Produkty Rolne': 'Livestock', 'Towary Miękkie': 'Soft Commodities',
+        'Ulubione': 'Favorites', 'Pozostałe': 'Other', 'Metale': 'Metals',
+        // Loading / errors
+        'Pobieranie bazy rynków z CFTC...': 'Loading markets from CFTC...',
+        'Nie znaleziono instrumentów.': 'No instruments found.',
+        'Ładowanie danych...': 'Loading data...',
+        'Błąd połączenia': 'Connection Error',
+        'Nie udało się pobrać danych z serwerów CFTC. Sprawdź połączenie i spróbuj ponownie.':
+            'Failed to fetch data from CFTC servers. Check your connection and try again.',
+        'Odśwież stronę': 'Reload page',
+        'Wpisz minimum 2 znaki...': 'Type at least 2 characters...',
+        'Brak wyników': 'No results',
+        'Wybierz serię do dodania...': 'Select a series to add...',
+        'Wybierz serię...': 'Select a series...',
+        'ICE publikuje wyłącznie raport Disaggregated': 'ICE only publishes Disaggregated reports',
+        'Lewa': 'Left', 'Prawa': 'Right',
+    };
+
+    let currentLang = (() => {
+        const q = new URLSearchParams(location.search).get('lang');
+        if (q === 'en' || q === 'pl') return q;
+        return localStorage.getItem('cot-lang') || 'pl';
+    })();
+    function t(s) { return (currentLang === 'en' && EN[s]) ? EN[s] : s; }
+
+    function setLang(lang) {
+        currentLang = lang;
+        localStorage.setItem('cot-lang', lang);
+        const url = new URL(location.href);
+        lang === 'pl' ? url.searchParams.delete('lang') : url.searchParams.set('lang', lang);
+        history.replaceState({}, '', url);
+        // Update lang toggle buttons UI
+        $$('#lang-toggle .cbar-btn').forEach(b => b.classList.toggle('active', b.dataset.lang === lang));
+        applyI18n();
+    }
+
+    function applyI18n() {
+        const set = (sel, key) => { const e = document.querySelector(sel); if (e) e.textContent = t(key); };
+        // Compact bar buttons
+        set('#report-type-toggle .cbar-btn[data-type="legacy"]', 'Ogólny');
+        set('#report-type-toggle .cbar-btn[data-type="detailed"]', 'Szczegółowy');
+        set('#position-type-toggle .cbar-btn[data-pos="net"]', 'Netto');
+        set('#btn-toggle-delta', 'Zmiana t/t');
+        set('#btn-toggle-options', 'Wpływ Opcji');
+        // Filtry button has SVG — update only text node
+        const qfBtn = $('#quick-filters-toggle');
+        if (qfBtn) {
+            let tn = qfBtn.lastChild;
+            while (tn && tn.nodeType !== 3) tn = tn.previousSibling;
+            if (tn) tn.textContent = ' ' + t('Filtry');
+        }
+        // Drawer
+        set('.drawer-title', 'Ustawienia & Serie');
+        $$('.drawer-tab').forEach(tab => {
+            const m = { settings: 'Ustawienia', same: 'Dodaj serię', other: 'Inny instrument' };
+            const key = m[tab.dataset.dtab];
+            if (!key) return;
+            let tn = tab.lastChild;
+            while (tn && tn.nodeType !== 3) tn = tn.previousSibling;
+            if (tn) tn.textContent = ' ' + t(key);
+        });
+        $$('.spop-label').forEach(el => { const tr = EN[el.textContent.trim()]; if (tr) el.textContent = currentLang === 'en' ? tr : el.dataset.pl || el.textContent; });
+        // Store PL text on first call for round-trip
+        $$('.spop-label').forEach(el => { if (!el.dataset.pl) el.dataset.pl = el.textContent; el.textContent = t(el.dataset.pl); });
+        set('#val-mul-1', 'Liczba kontraktów');
+        const mulBtn = $('#val-mul-size'); if (mulBtn) { const sp = mulBtn.querySelector('#mul-label'); mulBtn.textContent = t('Wartość nominalna') + ' '; if (sp) mulBtn.appendChild(sp); }
+        set('#btn-invert-1', 'Odwróć lewą ↕');
+        set('#btn-invert-2', 'Odwróć prawą ↕');
+        $$('.axis-btn').forEach(b => { const m = { left: 'Lewa oś', right: 'Prawa oś' }; if (m[b.dataset.axis]) b.textContent = t(m[b.dataset.axis]); });
+        $$('.cross-axis-btn').forEach(b => { const m = { left: 'Lewa oś', right: 'Prawa oś' }; if (m[b.dataset.axis]) b.textContent = t(m[b.dataset.axis]); });
+        // Source toggles
+        $$('#add-series-source-toggle .cbar-btn').forEach(b => { if (b.dataset.src === 'fut') b.textContent = t('Futures Only'); if (b.dataset.src === 'com') b.textContent = t('Combined'); });
+        // Section headers
+        set('#market-composition .section-header h3', 'Struktura Otwartych Pozycji');
+        set('#data-summary .section-header h3', 'Dane Liczbowe Pozycji');
+        // Period toggle
+        set('.table-period-label', 'Zmiana względem:');
+        $$('.period-btn').forEach(b => { const m = { ww: 'Poprzedniego tygodnia', mm: 'Poprzedniego miesiąca', yy: 'Poprzedniego roku' }; if (m[b.dataset.period]) b.textContent = t(m[b.dataset.period]); });
+        // Search placeholder
+        if (el.search) el.search.placeholder = currentLang === 'en'
+            ? 'Search instrument... (e.g. Gold, EUR, Bitcoin, Oil, Wheat)'
+            : 'Szukaj instrumentu... (np. Gold, EUR, Bitcoin, Ropa, Pszenica)';
+        // Header subtitle
+        set('.subtitle', 'Analiza przepływu kapitału (CFTC)');
+        // Footer
+        const foot = document.querySelector('#app-footer p');
+        if (foot) foot.innerHTML = currentLang === 'en'
+            ? `Data from CFTC public registry: <a href="https://www.cftc.gov/MarketReports/CommitmentsofTraders/index.htm" target="_blank" rel="noopener">Commitments of Traders</a> via Socrata API · For analytical and educational purposes only`
+            : `Dane pochodzą z rejestru otwartych pozycji CFTC: <a href="https://www.cftc.gov/MarketReports/CommitmentsofTraders/index.htm" target="_blank" rel="noopener">Commitments of Traders</a> dostępnego przez API Socrata · Wyłącznie do celów analitycznych i edukacyjnych`;
+        // Re-render JS-generated parts
+        renderChips();
+        if (currentInst) { populateAddSelect(); renderReportingTable(); renderPieCharts(); }
+        renderCats();
+    }
+
     // ── State ──
     let instruments = [];
     let favorites = JSON.parse(localStorage.getItem('cot-favs') || '[]');
@@ -347,6 +552,7 @@
         btnToggleOptions: $('#btn-toggle-options'),
         dataTypeBtns: $$('#data-type-toggle .cbar-btn'),
         addSrcBtns: $$('#add-series-source-toggle .cbar-btn'),
+        langToggleBtns: $$('#lang-toggle .cbar-btn'),
         chips: $('#series-chips'),
         addBtn: $('#add-series-btn'), addPanel: $('#add-series-panel'),
         addSel: $('#add-series-select'), confirmAdd: $('#confirm-add-series'), cancelAdd: $('#cancel-add-series'),
@@ -381,7 +587,7 @@
     // Load instruments
     // ============================================
     async function loadAll() {
-        el.grid.innerHTML = '<div class="loading-state"><div class="spinner"></div><p>Pobieranie bazy rynków z CFTC...</p></div>';
+        el.grid.innerHTML = `<div class="loading-state"><div class="spinner"></div><p>${t('Pobieranie bazy rynków z CFTC...')}</p></div>`;
         const sel = 'cftc_contract_market_code,contract_market_name,market_and_exchange_names,commodity_group_name,commodity_subgroup_name,commodity_name,futonly_or_combined,contract_units';
         const qWhere = `futonly_or_combined='FutOnly'`;
         const qGroup = sel;
@@ -481,14 +687,14 @@
             <div class="cat-dropdown-wrap">
                 <button class="cat-dropdown-btn" id="cat-dropdown-btn">
                     <span class="cat-dropdown-icon">${cur.icon}</span>
-                    <span class="cat-dropdown-label">${cur.label.split(' (')[0]}</span>
+                    <span class="cat-dropdown-label">${t(cur.label).split(' (')[0]}</span>
                     <svg class="cat-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
                 </button>
                 <div class="cat-dropdown-menu" id="cat-dropdown-menu">
                     ${catDefs.map(([k, v]) => `
                         <button class="cat-menu-item ${k === currentCat ? 'active' : ''}" data-cat="${k}">
                             <span class="cat-menu-icon">${v.icon}</span>
-                            <span>${v.label.split(' (')[0]}</span>
+                            <span>${t(v.label).split(' (')[0]}</span>
                             ${k === 'favorites' && favCount > 0 ? `<span class="cat-count">${favCount}</span>` : ''}
                         </button>
                     `).join('')}
@@ -516,12 +722,12 @@
 
         // Sync mobile dropdown
         const curCat = CATS[currentCat] || CATS['popular'];
-        if (el.catMobileLabel) el.catMobileLabel.textContent = curCat.label;
+        if (el.catMobileLabel) el.catMobileLabel.textContent = t(curCat.label);
         if (el.catMobileDropdown) {
             el.catMobileDropdown.innerHTML = Object.entries(CATS).map(([id, cfg]) =>
                 `<div class="cat-mobile-option${id === currentCat ? ' active' : ''}" data-cat="${id}">
                     ${cfg.icon ? `<span style="width:16px;height:16px;display:inline-flex">${cfg.icon}</span>` : ''}
-                    <span>${cfg.label}</span>
+                    <span>${t(cfg.label)}</span>
                 </div>`
             ).join('');
             el.catMobileDropdown.querySelectorAll('.cat-mobile-option').forEach(opt => {
@@ -631,7 +837,7 @@
 
                     html += `
                         <div class="pop-cat-block" style="border-color: var(--amber); box-shadow: 0 4px 12px rgba(245, 158, 11, 0.05);">
-                            <h3 class="pop-cat-title" style="background: rgba(245, 158, 11, 0.05); color: var(--amber);">${c.label}</h3>
+                            <h3 class="pop-cat-title" style="background: rgba(245, 158, 11, 0.05); color: var(--amber);">${t(c.label)}</h3>
                             <div class="accordion-body"><div class="accordion-inner">
                             <ul class="pop-list">
                                 ${items.map(i => `
@@ -656,7 +862,7 @@
 
                 html += `
                     <div class="pop-cat-block">
-                        <h3 class="pop-cat-title">${c.label}</h3>
+                        <h3 class="pop-cat-title">${t(c.label)}</h3>
                         <div class="accordion-body"><div class="accordion-inner">
                         <ul class="pop-list">
                             ${items.map(i => `
@@ -682,7 +888,7 @@
                     if (!items.length) return;
                     html += `
                         <div class="pop-cat-block" style="margin-bottom:var(--sp-2xl);">
-                            <h2 class="pop-cat-title">${c.label}</h2>
+                            <h2 class="pop-cat-title">${t(c.label)}</h2>
                             <div class="accordion-body"><div class="accordion-inner">
                             <div class="instruments-grid">
                                 ${generateCards(items)}
@@ -881,12 +1087,12 @@
     function populateAddSelect() {
         const src = addSeriesSourceType;
         const prefix = src === 'com' ? '[COM] ' : '';
-        let html = '<option value="">Wybierz serię do dodania...</option>';
+        let html = `<option value="">${t('Wybierz serię do dodania...')}</option>`;
         for (const [rpt, cfg] of Object.entries(SERIES)) {
             if (!(chartData[src] || {})[rpt]) continue;
-            html += `<optgroup label="── ${cfg.label} ──">`;
+            html += `<optgroup label="── ${t(cfg.label)} ──">`;
             cfg.fields.forEach(f => {
-                html += `<option value="${rpt}::${f.key}">${prefix}${f.label}</option>`;
+                html += `<option value="${rpt}::${f.key}">${prefix}${t(f.label)}</option>`;
             });
             html += `</optgroup>`;
         }
@@ -1112,7 +1318,7 @@
                 }
 
                 const fld = SERIES[s.rpt].fields.find(f => f.key === s.key);
-                const label = fld ? fld.label : s.key;
+                const label = fld ? t(fld.label) : s.key;
                 h += `<div style="display:flex;gap:5px;align-items:center;margin:1px 0"><span style="width:7px;height:7px;border-radius:50%;background:${s.color};flex-shrink:0"></span><span style="color:var(--tx-2)">${label}:</span><span style="font-weight:600;margin-left:auto">${fmt(v)}</span></div>`;
             });
 
@@ -1244,7 +1450,7 @@
             }
 
             let h = `<div style="margin-bottom:3px;font-weight:600;color:var(--tx-2)">${p.time}</div>`;
-            h += `<div style="font-size:0.65rem;color:var(--tx-3);text-transform:uppercase;margin-bottom:4px">Zmiana t/t</div>`;
+            h += `<div style="font-size:0.65rem;color:var(--tx-3);text-transform:uppercase;margin-bottom:4px">${t('Zmiana t/t')}</div>`;
 
             activeSeries.forEach(s => {
                 if (!s._deltaHs) return;
@@ -1257,7 +1463,7 @@
                 const sign = diffVal > 0 ? '+' : '';
                 const cCls = diffVal > 0 ? '#10b981' : (diffVal < 0 ? '#ef4444' : 'var(--tx-2)');
                 const fld = SERIES[s.rpt].fields.find(f => f.key === s.key);
-                const label = fld ? fld.label : s.key;
+                const label = fld ? t(fld.label) : s.key;
 
                 h += `<div style="display:flex;gap:5px;align-items:center;margin:1px 0"><span style="width:7px;height:7px;border-radius:50%;background:${s.color};flex-shrink:0"></span><span style="color:var(--tx-2)">${label}:</span><span style="font-weight:600;margin-left:auto;color:${cCls}">${sign}${fmt(diffVal)}</span></div>`;
             });
@@ -1390,7 +1596,7 @@
                 }
             }
             let h = `<div style="margin-bottom:3px;font-weight:600;color:var(--tx-2)">${p.time}</div>`;
-            h += `<div style="font-size:0.65rem;color:var(--tx-3);text-transform:uppercase;margin-bottom:4px">Wpływ Opcji (COM − FUT)</div>`;
+            h += `<div style="font-size:0.65rem;color:var(--tx-3);text-transform:uppercase;margin-bottom:4px">${t('Wpływ Opcji (COM − FUT)')}</div>`;
             const cotSeries = activeSeries.filter(s => s.rpt !== 'external' && s.visible !== false);
             cotSeries.forEach(s => {
                 if (!s._optHs) return;
@@ -1399,7 +1605,7 @@
                 const sign = d.value > 0 ? '+' : '';
                 const cCls = d.value > 0 ? '#10b981' : (d.value < 0 ? '#ef4444' : 'var(--tx-2)');
                 const fld = SERIES[s.rpt].fields.find(f => f.key === s.key);
-                const label = fld ? fld.label : s.key;
+                const label = fld ? t(fld.label) : s.key;
                 h += `<div style="display:flex;gap:5px;align-items:center;margin:1px 0"><span style="width:7px;height:7px;border-radius:50%;background:${s.color};flex-shrink:0"></span><span style="color:var(--tx-2)">${label}:</span><span style="font-weight:600;margin-left:auto;color:${cCls}">${sign}${fmt(d.value)}</span></div>`;
             });
             tip.innerHTML = h;
@@ -1441,7 +1647,7 @@
 
             const titleDom = document.createElement('div');
             titleDom.style.cssText = 'position:absolute; top:4px; left:8px; font-size:0.65rem; font-weight:600; color:var(--tx-3); text-transform:uppercase; z-index:11;';
-            titleDom.innerText = 'Proporcje 100%';
+            titleDom.innerText = t('Proporcje 100%');
             overlays.appendChild(titleDom);
 
             c.appendChild(overlays);
@@ -1575,7 +1781,7 @@
                 prevSum = val;
 
                 const fld = SERIES[s.rpt].fields.find(f => f.key === s.key);
-                const label = fld ? fld.label : s.key;
+                const label = fld ? t(fld.label) : s.key;
                 seriesVals.push(`<div style="display:flex;gap:5px;align-items:center;margin:1px 0"><span style="width:7px;height:7px;border-radius:50%;background:${s.color};flex-shrink:0"></span><span style="color:var(--tx-2)">${label}:</span><span style="font-weight:600;margin-left:auto">${actVal.toFixed(1)}%</span></div>`);
             }
 
@@ -1588,7 +1794,7 @@
     // Chips
     // ============================================
     function renderChips() {
-        const labelHtml = '<span class="chips-label">Widoczne serie:</span>';
+        const labelHtml = `<span class="chips-label">${t('Widoczne serie:')}</span>`;
         const chipsHtml = activeSeries.map((s, i) => {
             const hidden = s.visible === false;
             const eyeIcon = hidden
@@ -1603,7 +1809,7 @@
             } else {
                 const fld = SERIES[s.rpt].fields.find(f => f.key === s.key);
                 const srcPrefix = s.sourceType === 'com' ? '[COM] ' : '';
-                label = srcPrefix + (fld ? fld.label : s.key);
+                label = srcPrefix + (fld ? t(fld.label) : s.key);
             }
 
             const axisBadge = s.axis === 'right' ? 'P' : 'L';
@@ -1742,14 +1948,14 @@
 
         // Show report date
         const latestDate = latest.report_date_as_yyyy_mm_dd ? latest.report_date_as_yyyy_mm_dd.substring(0, 10) : '—';
-        el.reportDate.textContent = 'Raport z dnia: ' + latestDate;
+        el.reportDate.textContent = t('Raport z dnia:') + ' ' + latestDate;
 
         // Date range
         if (prev) {
             const prevDate = prev.report_date_as_yyyy_mm_dd ? prev.report_date_as_yyyy_mm_dd.substring(0, 10) : '—';
-            el.tableDateRange.textContent = `Porównanie: ${prevDate} → ${latestDate}`;
+            el.tableDateRange.textContent = `${t('Porównanie:')} ${prevDate} → ${latestDate}`;
         } else {
-            el.tableDateRange.textContent = 'Brak danych z poprzedniego okresu';
+            el.tableDateRange.textContent = t('Brak danych z poprzedniego okresu');
         }
 
         const fields = SERIES[repMatch].fields;
@@ -1762,7 +1968,7 @@
             const isLong = !isNet && f.key.includes('_long');
             const isShort = !isNet && f.key.includes('_short');
             if (!isNet && !isLong && !isShort) return;
-            let grpName = f.g;
+            let grpName = t(f.g);
             if (!groups[grpName]) groups[grpName] = { name: grpName, L: 0, S: 0, Net: 0, Lchg: 0, Schg: 0, Netchg: 0 };
 
             let v = f.comp ? f.comp(latest) : N(latest[f.key]); v *= valueMultiplier;
@@ -1800,10 +2006,10 @@
             <table class="comp-table">
                 <thead>
                     <tr>
-                        <th>Grupa uczestników</th>
-                        <th>Pozycje długie (Long)</th>
-                        <th class="table-divider">Pozycje krótkie (Short)</th>
-                        <th class="table-divider">Pozycja netto (Net)</th>
+                        <th>${t('Grupa uczestników')}</th>
+                        <th>${t('Pozycje długie (Long)')}</th>
+                        <th class="table-divider">${t('Pozycje krótkie (Short)')}</th>
+                        <th class="table-divider">${t('Pozycja netto (Net)')}</th>
                     </tr>
                 </thead>
                 <tbody>${rows}</tbody>
@@ -1885,16 +2091,16 @@
                 <h4>${title}</h4>
                 <div class="pie-canvas-wrapper">
                     <canvas id="${id}"></canvas>
-                    <div class="pie-center-label">${fmt(total)}<small>kontraktów</small></div>
+                    <div class="pie-center-label">${fmt(total)}<small>${t('kontraktów')}</small></div>
                 </div>
                 <div class="pie-legend">${legendItems}</div>
             </div>`;
         }
 
         el.pieGrid.innerHTML =
-            buildPie('Pozycje długie', d => d.L, totalLong) +
-            buildPie('Pozycje krótkie', d => d.S, totalShort) +
-            buildPie('Łączny Open Interest', d => d.L + d.S, totalOI);
+            buildPie(t('Pozycje długie'), d => d.L, totalLong) +
+            buildPie(t('Pozycje krótkie'), d => d.S, totalShort) +
+            buildPie(t('Łączny Open Interest'), d => d.L + d.S, totalOI);
 
         // Draw canvases
         function drawPieFor(title, getVal, total) {
@@ -1908,9 +2114,9 @@
             drawDonut(canvas, slices);
         }
 
-        drawPieFor('Pozycje długie', d => d.L, totalLong);
-        drawPieFor('Pozycje krótkie', d => d.S, totalShort);
-        drawPieFor('Łączny Open Interest', d => d.L + d.S, totalOI);
+        drawPieFor(t('Pozycje długie'), d => d.L, totalLong);
+        drawPieFor(t('Pozycje krótkie'), d => d.S, totalShort);
+        drawPieFor(t('Łączny Open Interest'), d => d.L + d.S, totalOI);
 
         el.composition.style.display = 'block';
     }
@@ -2122,6 +2328,14 @@
         });
     }
 
+    // Language toggle
+    if (el.langToggleBtns && el.langToggleBtns.length) {
+        el.langToggleBtns.forEach(b => {
+            b.classList.toggle('active', b.dataset.lang === currentLang);
+            b.onclick = () => setLang(b.dataset.lang);
+        });
+    }
+
     // Quick Selector Events (cbar-btn)
     if (el.reportTypeBtns) {
         el.reportTypeBtns.forEach(b => {
@@ -2280,10 +2494,10 @@
         }
 
         const options = quickFiltersMap[rptType] || {};
-        let html = `<button class="qf-item ${!currentQuickFilterKeys ? 'active' : ''}" data-keys="all">Wszystkie grupy (Reset)</button>`;
+        let html = `<button class="qf-item ${!currentQuickFilterKeys ? 'active' : ''}" data-keys="all">${t('Wszystkie grupy (Reset)')}</button>`;
         for (const [label, keys] of Object.entries(options)) {
             const isActive = currentQuickFilterKeys && keys.join(',') === currentQuickFilterKeys.join(',');
-            html += `<button class="qf-item ${isActive ? 'active' : ''}" data-keys="${keys.join(',')}">${label}</button>`;
+            html += `<button class="qf-item ${isActive ? 'active' : ''}" data-keys="${keys.join(',')}">${t(label)}</button>`;
         }
         el.qfOptions.innerHTML = html;
 
@@ -2311,14 +2525,14 @@
         el.crossSearch.oninput = () => {
             const q = el.crossSearch.value.trim().toLowerCase();
             if (!q || q.length < 2) {
-                el.crossResults.innerHTML = '<div class="cross-results-empty">Wpisz minimum 2 znaki...</div>';
+                el.crossResults.innerHTML = `<div class="cross-results-empty">${t('Wpisz minimum 2 znaki...')}</div>`;
                 return;
             }
             const hits = instruments.filter(i =>
                 (i.name + ' ' + i.exchange).toLowerCase().includes(q)
             ).slice(0, 12);
             if (!hits.length) {
-                el.crossResults.innerHTML = '<div class="cross-results-empty">Brak wyników</div>';
+                el.crossResults.innerHTML = `<div class="cross-results-empty">${t('Brak wyników')}</div>`;
                 return;
             }
             el.crossResults.innerHTML = hits.map(i =>
@@ -2335,12 +2549,12 @@
                     el.crossInstrName.textContent = crossSelectedInstr.name;
                     el.crossSection.style.display = 'block';
                     // Populate series select
-                    let html = '<option value="">Wybierz serię...</option>';
+                    let html = `<option value="">${t('Wybierz serię...')}</option>`;
                     for (const [rpt, cfg] of Object.entries(SERIES)) {
                         if (!crossSelectedInstr.reports[rpt]) continue;
-                        html += `<optgroup label="── ${cfg.label} ──">`;
+                        html += `<optgroup label="── ${t(cfg.label)} ──">`;
                         cfg.fields.forEach(f => {
-                            html += `<option value="${rpt}::${f.key}">${f.label}</option>`;
+                            html += `<option value="${rpt}::${f.key}">${t(f.label)}</option>`;
                         });
                         html += '</optgroup>';
                     }
@@ -2472,6 +2686,7 @@
     setupResizer('prop-resizer', 'prop-chart-container', 80);
 
     // ── Init ──
+    applyI18n();
     loadAll();
 })();
 
