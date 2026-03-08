@@ -768,12 +768,20 @@
             el.yfControl.style.display = 'none';
         }
 
-        // Report badges
+        // Report badges + blokada "Ogólny" dla ICE (ICE nie ma formatu Legacy)
         if (inst.source === 'ice') {
             el.reportBadges.innerHTML =
                 '<span class="report-badge ice">ICE Futures Europe</span>' +
                 '<span class="report-badge dis">Disaggregated</span>';
+            el.reportTypeBtns.forEach(b => {
+                const isDetailed = b.dataset.type === 'detailed';
+                b.classList.toggle('active', isDetailed);
+                b.disabled = !isDetailed;
+                b.style.opacity = isDetailed ? '' : '0.35';
+                b.title = isDetailed ? '' : 'ICE publikuje wyłącznie raport Disaggregated';
+            });
         } else {
+            el.reportTypeBtns.forEach(b => { b.disabled = false; b.style.opacity = ''; b.title = ''; });
             el.reportBadges.innerHTML = Object.keys(inst.reports).map(r => {
                 const cls = r === 'legacy' ? 'leg' : r === 'disaggregated' ? 'dis' : 'tff';
                 return `<span class="report-badge ${cls}">${SERIES[r].label}</span>`;
