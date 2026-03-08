@@ -421,6 +421,7 @@
             if (typeof populateAddSelect === 'function') populateAddSelect();
             if (typeof renderReportingTable === 'function') renderReportingTable();
             if (typeof renderPieCharts === 'function') renderPieCharts();
+            if (typeof rebuildChart === 'function') rebuildChart();
         }
     }
 
@@ -449,6 +450,13 @@
                 let tn = tab.lastChild;
                 while (tn && tn.nodeType !== 3) tn = tn.previousSibling;
                 if (tn) tn.textContent = ' ' + t(key);
+            });
+            $$('.confirm-btn').forEach(btn => {
+                const textPl = btn.dataset.pl;
+                const textEn = btn.dataset.en;
+                if (textPl && textEn) {
+                    btn.textContent = currentLang === 'en' ? textEn : textPl;
+                }
             });
             $$('.spop-label').forEach(el => { const tr = EN[el.textContent.trim()]; if (tr) el.textContent = currentLang === 'en' ? tr : el.dataset.pl || el.textContent; });
             // Store PL text on first call for round-trip
@@ -1182,6 +1190,20 @@
         };
     }
 
+    function getSeriesDisplayLabel(s) {
+        if (s.rpt === 'external') return `[YF] ${s.label || s.key.toUpperCase() + ' Close'}`;
+        const fld = (SERIES[s.rpt] && SERIES[s.rpt].fields) ? SERIES[s.rpt].fields.find(f => f.key === s.key) : null;
+        let pfx = '';
+        if (s.crossCode) {
+            const cxInst = instruments.find(i => i.code === s.crossCode);
+            const iName = cxInst ? cxInst.name.substring(0, 20) : s.crossCode;
+            pfx = iName + ': ';
+        } else {
+            pfx = s.sourceType === 'com' ? '[COM] ' : '';
+        }
+        return pfx + (fld ? t(fld.label) : s.key);
+    }
+
     function rebuildChart() {
         if (chart) { chart.remove(); chart = null; }
         if (activeSeries.length === 0) return;
@@ -1223,7 +1245,7 @@
                 const ls = chart.addLineSeries({
                     color: s.color, lineWidth: 2, lineStyle: 2,
                     priceScaleId: s.axis,
-                    title: `${s.key.toUpperCase()} Close`,
+                    title: getSeriesDisplayLabel(s),
                     lastValueVisible: true, priceLineVisible: false,
                     crosshairMarkerVisible: true, crosshairMarkerRadius: 4,
                 });
@@ -1247,7 +1269,7 @@
             const ls = chart.addLineSeries({
                 color: s.color, lineWidth: 2,
                 priceScaleId: s.axis,
-                title: `${fld.label}`,
+                title: getSeriesDisplayLabel(s),
                 lastValueVisible: true, priceLineVisible: false,
                 crosshairMarkerVisible: true, crosshairMarkerRadius: 4,
             });
@@ -1351,12 +1373,11 @@
                 if ((s.axis === 'left' && invertL) || (s.axis === 'right' && invertR)) v = -v;
 
                 if (s.rpt === 'external') {
-                    h += `<div style="display:flex;gap:5px;align-items:center;margin:1px 0"><span style="width:7px;height:7px;border-radius:50%;background:${s.color};flex-shrink:0"></span><span style="color:var(--tx-2);font-size:.68rem">[YF]</span><span style="color:var(--tx-2)">${s.label}:</span><span style="font-weight:600;margin-left:auto">${v.toFixed(2)}</span></div>`;
+                    h += `<div style="display:flex;gap:5px;align-items:center;margin:1px 0"><span style="width:7px;height:7px;border-radius:50%;background:${s.color};flex-shrink:0"></span><span style="color:var(--tx-2)">${getSeriesDisplayLabel(s)}:</span><span style="font-weight:600;margin-left:auto">${v.toFixed(2)}</span></div>`;
                     return;
                 }
 
-                const fld = SERIES[s.rpt].fields.find(f => f.key === s.key);
-                const label = fld ? t(fld.label) : s.key;
+                const label = getSeriesDisplayLabel(s);
                 h += `<div style="display:flex;gap:5px;align-items:center;margin:1px 0"><span style="width:7px;height:7px;border-radius:50%;background:${s.color};flex-shrink:0"></span><span style="color:var(--tx-2)">${label}:</span><span style="font-weight:600;margin-left:auto">${fmt(v)}</span></div>`;
             });
 
@@ -1500,8 +1521,7 @@
 
                 const sign = diffVal > 0 ? '+' : '';
                 const cCls = diffVal > 0 ? '#10b981' : (diffVal < 0 ? '#ef4444' : 'var(--tx-2)');
-                const fld = SERIES[s.rpt].fields.find(f => f.key === s.key);
-                const label = fld ? t(fld.label) : s.key;
+                const label = getSeriesDisplayLabel(s);
 
                 h += `<div style="display:flex;gap:5px;align-items:center;margin:1px 0"><span style="width:7px;height:7px;border-radius:50%;background:${s.color};flex-shrink:0"></span><span style="color:var(--tx-2)">${label}:</span><span style="font-weight:600;margin-left:auto;color:${cCls}">${sign}${fmt(diffVal)}</span></div>`;
             });
@@ -1642,8 +1662,7 @@
                 if (!d || isNaN(d.value)) return;
                 const sign = d.value > 0 ? '+' : '';
                 const cCls = d.value > 0 ? '#10b981' : (d.value < 0 ? '#ef4444' : 'var(--tx-2)');
-                const fld = SERIES[s.rpt].fields.find(f => f.key === s.key);
-                const label = fld ? t(fld.label) : s.key;
+                const label = getSeriesDisplayLabel(s);
                 h += `<div style="display:flex;gap:5px;align-items:center;margin:1px 0"><span style="width:7px;height:7px;border-radius:50%;background:${s.color};flex-shrink:0"></span><span style="color:var(--tx-2)">${label}:</span><span style="font-weight:600;margin-left:auto;color:${cCls}">${sign}${fmt(d.value)}</span></div>`;
             });
             tip.innerHTML = h;
@@ -1818,8 +1837,7 @@
                 const actVal = val - prevSum;
                 prevSum = val;
 
-                const fld = SERIES[s.rpt].fields.find(f => f.key === s.key);
-                const label = fld ? t(fld.label) : s.key;
+                const label = getSeriesDisplayLabel(s);
                 seriesVals.push(`<div style="display:flex;gap:5px;align-items:center;margin:1px 0"><span style="width:7px;height:7px;border-radius:50%;background:${s.color};flex-shrink:0"></span><span style="color:var(--tx-2)">${label}:</span><span style="font-weight:600;margin-left:auto">${actVal.toFixed(1)}%</span></div>`);
             }
 
@@ -1839,16 +1857,7 @@
                 ? `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>`
                 : `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>`;
 
-            let label;
-            if (s.rpt === 'external') {
-                label = `[YF] ${s.label}`;
-            } else if (s.crossCode) {
-                label = s.label || s.key;
-            } else {
-                const fld = SERIES[s.rpt].fields.find(f => f.key === s.key);
-                const srcPrefix = s.sourceType === 'com' ? '[COM] ' : '';
-                label = srcPrefix + (fld ? t(fld.label) : s.key);
-            }
+            const label = getSeriesDisplayLabel(s);
 
             const axisBadge = s.axis === 'right' ? 'P' : 'L';
             return `<div class="series-chip${hidden ? ' chip-hidden' : ''}" data-i="${i}" title="Kliknij aby edytować">
@@ -2366,13 +2375,7 @@
         });
     }
 
-    // Language toggle
-    if (el.langToggleBtns && el.langToggleBtns.length) {
-        el.langToggleBtns.forEach(b => {
-            b.classList.toggle('active', b.dataset.lang === currentLang);
-            b.onclick = () => setLang(b.dataset.lang);
-        });
-    }
+
 
     // Quick Selector Events (cbar-btn)
     if (el.reportTypeBtns) {
