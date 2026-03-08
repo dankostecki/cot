@@ -984,6 +984,56 @@
     // ============================================
     // Open chart — load data from ALL available reports
     // ============================================
+    async function fetchReportData(inst, reportsToFetchParams = null) {
+        const result = { fut: {}, com: {} };
+        const reportsToFetch = reportsToFetchParams || Object.keys(inst.reports);
+
+        if (inst.source === 'ice') {
+            const base = `./data/ice/${inst.dataPath}`;
+            const processICE = data => {
+                const fields = SERIES.disaggregated.fields.filter(f => !f.comp).map(f => f.key);
+                data.forEach(row => {
+                    fields.forEach(f => row[f] = N(row[f]));
+                    SERIES.disaggregated.fields.filter(f => f.comp).forEach(f => { row[f.key] = f.comp(row); });
+                });
+                return data;
+            };
+            const [futRes, comRes] = await Promise.all([
+                fetch(`${base}/fut.json`),
+                fetch(`${base}/com.json`),
+            ]);
+            if (futRes.ok) { const d = await futRes.json(); result.fut.disaggregated = processICE(d); }
+            if (comRes.ok) { const d = await comRes.json(); result.com.disaggregated = processICE(d); }
+        } else {
+            const fetches = [];
+            // CFTC Socrata API
+            reportsToFetch.forEach(rpt => {
+                if (!SERIES[rpt]) return;
+                const fields = SERIES[rpt].fields.filter(f => !f.comp).map(f => f.key);
+                const sel = ['report_date_as_yyyy_mm_dd', ...fields].join(',');
+                const processData = (data) => {
+                    data.forEach(row => {
+                        fields.forEach(f => row[f] = N(row[f]));
+                        SERIES[rpt].fields.filter(f => f.comp).forEach(f => { row[f.key] = f.comp(row); });
+                    });
+                    return data;
+                };
+                fetches.push(
+                    fetch(`${API}/${EP_FUT[rpt]}.json?$select=${sel}&$where=cftc_contract_market_code='${inst.code}' AND futonly_or_combined='FutOnly'&$order=report_date_as_yyyy_mm_dd ASC&$limit=50000`)
+                        .then(r => r.ok ? r.json() : [])
+                        .then(d => { result.fut[rpt] = processData(d); })
+                );
+                fetches.push(
+                    fetch(`${API}/${EP_COM[rpt]}.json?$select=${sel}&$where=cftc_contract_market_code='${inst.code}'&$order=report_date_as_yyyy_mm_dd ASC&$limit=50000`)
+                        .then(r => r.ok ? r.json() : [])
+                        .then(d => { result.com[rpt] = processData(d); })
+                );
+            });
+            await Promise.all(fetches);
+        }
+        return result;
+    }
+
     async function openChart(code) {
         const inst = instruments.find(i => i.code === code);
         if (!inst) return;
@@ -1042,45 +1092,9 @@
 
         el.chartLoad.style.display = 'flex';
         try {
-            if (inst.source === 'ice') {
-                // Ładowanie z pre-generowanych plików JSON (GitHub Actions)
-                const base = `./data/ice/${inst.dataPath}`;
-                const processICE = data => {
-                    const fields = SERIES.disaggregated.fields.filter(f => !f.comp).map(f => f.key);
-                    data.forEach(row => {
-                        fields.forEach(f => row[f] = N(row[f]));
-                        SERIES.disaggregated.fields.filter(f => f.comp).forEach(f => { row[f.key] = f.comp(row); });
-                    });
-                    return data;
-                };
-                const [futRes, comRes] = await Promise.all([
-                    fetch(`${base}/fut.json`),
-                    fetch(`${base}/com.json`),
-                ]);
-                if (futRes.ok) chartData.fut.disaggregated = processICE(await futRes.json());
-                if (comRes.ok) chartData.com.disaggregated = processICE(await comRes.json());
-            } else {
-                // CFTC Socrata API
-                const fetches = Object.keys(inst.reports).flatMap(rpt => {
-                    const fields = SERIES[rpt].fields.filter(f => !f.comp).map(f => f.key);
-                    const sel = ['report_date_as_yyyy_mm_dd', ...fields].join(',');
-                    const processData = (data) => {
-                        data.forEach(row => {
-                            fields.forEach(f => row[f] = N(row[f]));
-                            SERIES[rpt].fields.filter(f => f.comp).forEach(f => { row[f.key] = f.comp(row); });
-                        });
-                        return data;
-                    };
-                    const p1 = fetch(`${API}/${EP_FUT[rpt]}.json?$select=${sel}&$where=cftc_contract_market_code='${code}' AND futonly_or_combined='FutOnly'&$order=report_date_as_yyyy_mm_dd ASC&$limit=50000`)
-                        .then(r => r.ok ? r.json() : [])
-                        .then(d => { chartData.fut[rpt] = processData(d); });
-                    const p2 = fetch(`${API}/${EP_COM[rpt]}.json?$select=${sel}&$where=cftc_contract_market_code='${code}'&$order=report_date_as_yyyy_mm_dd ASC&$limit=50000`)
-                        .then(r => r.ok ? r.json() : [])
-                        .then(d => { chartData.com[rpt] = processData(d); });
-                    return [p1, p2];
-                });
-                await Promise.all(fetches);
-            }
+            const dataResult = await fetchReportData(inst);
+            chartData.fut = dataResult.fut;
+            chartData.com = dataResult.com;
 
             populateAddSelect();
             applySimplifiedSelection();
@@ -2621,18 +2635,9 @@
             if (!chartData['cross_' + crossSelectedInstr.code]) {
                 try {
                     el.chartLoad.style.display = 'flex';
-                    const EP_MAP = { legacy: '6dca-aqww', disaggregated: '72hh-3qpy', tff: 'gpe5-46if' };
-                    const fields = SERIES[rpt].fields.filter(f => !f.comp).map(f => f.key);
-                    const sel = ['report_date_as_yyyy_mm_dd', ...fields].join(',');
-                    const url = `${API}/${EP_MAP[rpt]}.json?$select=${sel}&$where=cftc_contract_market_code='${crossSelectedInstr.code}' AND futonly_or_combined='FutOnly'&$order=report_date_as_yyyy_mm_dd ASC&$limit=50000`;
-                    const r = await fetch(url);
-                    const data = await r.json();
-                    data.forEach(row => {
-                        fields.forEach(f => row[f] = N(row[f]));
-                        SERIES[rpt].fields.filter(f => f.comp).forEach(f => { row[f.key] = f.comp(row); });
-                    });
+                    const dataMap = await fetchReportData(crossSelectedInstr, [rpt]);
                     if (!chartData['cross_' + crossSelectedInstr.code]) chartData['cross_' + crossSelectedInstr.code] = {};
-                    chartData['cross_' + crossSelectedInstr.code][rpt] = data;
+                    chartData['cross_' + crossSelectedInstr.code][rpt] = dataMap.fut && dataMap.fut[rpt] ? dataMap.fut[rpt] : [];
                 } catch (e) {
                     alert('Nie udało się pobrać danych dla: ' + crossSelectedInstr.name);
                     return;
