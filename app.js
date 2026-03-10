@@ -185,6 +185,35 @@
                 { key: '_net_nrt', label: 'Drobni Spekulanci — Pozycja netto', g: 'Drobni Spekulanci', comp: r => (N(r.nonrept_positions_long_all) - N(r.nonrept_positions_short_all)), color: '#8b5cf6' },
                 { key: 'open_interest_all', label: 'Otwarte Pozycje (Open Interest)', g: 'Rynek Ogółem' },
             ]
+        },
+        // Syntetyczny odpowiednik Legacy dla ICE Brent:
+        // NC  = Managed Money + Other Reportables
+        // Comm = PMPU + Swap Dealers
+        // Netto obliczane jako suma nett poszczególnych grup (MM_net + Other_net)
+        ice_legacy: {
+            tag: 'SYN', label: 'Ogólny Syntetyczny (ICE)', isSynthetic: true,
+            syntheticNote: 'NC = Managed Money + Other Reportables | Commercial = PMPU + Swap Dealers',
+            fields: [
+                // Non-Commercial (NC) = Managed Money + Other Reportables
+                { key: '_syn_nc_long', label: 'Duzi Spekulanci — Pozycje długie', g: 'Duzi Spekulanci', compGrp: 'NC', color: '#3b82f6',
+                  comp: r => N(r.m_money_positions_long_all) + N(r.other_rept_positions_long) },
+                { key: '_syn_nc_short', label: 'Duzi Spekulanci — Pozycje krótkie', g: 'Duzi Spekulanci', compGrp: 'NC',
+                  comp: r => N(r.m_money_positions_short_all) + N(r.other_rept_positions_short) },
+                // Netto: MM_net + Other_net (suma nett grup)
+                { key: '_syn_nc_net', label: 'Duzi Spekulanci — Pozycja netto', g: 'Duzi Spekulanci', color: '#3b82f6',
+                  comp: r => (N(r.m_money_positions_long_all) - N(r.m_money_positions_short_all))
+                           + (N(r.other_rept_positions_long)  - N(r.other_rept_positions_short)) },
+                // Commercial (Comm) = PMPU + Swap Dealers
+                { key: '_syn_co_long', label: 'Podmioty Komercyjne — Pozycje długie', g: 'Podmioty Komercyjne', compGrp: 'Comm', color: '#10b981',
+                  comp: r => N(r.prod_merc_positions_long) + N(r.swap_positions_long_all) },
+                { key: '_syn_co_short', label: 'Podmioty Komercyjne — Pozycje krótkie', g: 'Podmioty Komercyjne', compGrp: 'Comm',
+                  comp: r => N(r.prod_merc_positions_short) + N(r.swap__positions_short_all) },
+                // Netto: PMPU_net + Swap_net (suma nett grup)
+                { key: '_syn_co_net', label: 'Podmioty Komercyjne — Pozycja netto', g: 'Podmioty Komercyjne', color: '#10b981',
+                  comp: r => (N(r.prod_merc_positions_long)  - N(r.prod_merc_positions_short))
+                           + (N(r.swap_positions_long_all)   - N(r.swap__positions_short_all)) },
+                { key: 'open_interest_all', label: 'Otwarte Pozycje (Open Interest)', g: 'Rynek Ogółem' }
+            ]
         }
     };
     function N(v) { return Number(v) || 0; }
@@ -204,7 +233,11 @@
 
         let targetRpt = '';
         if (repType === 'legacy') {
-            targetRpt = currentInst.reports.legacy ? 'legacy' : Object.keys(currentInst.reports)[0];
+            if (currentInst.source === 'ice' && currentInst.dataPath === 'brent') {
+                targetRpt = 'ice_legacy';
+            } else {
+                targetRpt = currentInst.reports.legacy ? 'legacy' : Object.keys(currentInst.reports)[0];
+            }
         } else {
             targetRpt = currentInst.reports.disaggregated ? 'disaggregated' : (currentInst.reports.tff ? 'tff' : 'legacy');
         }
@@ -233,7 +266,7 @@
 
             let match = false;
             const k = f.key;
-            const isNet = k.startsWith('_net_');
+            const isNet = k.startsWith('_net_') || k.endsWith('_net');
             const isLong = !isNet && k.includes('_long');
             const isShort = !isNet && k.includes('_short');
 
@@ -1004,6 +1037,16 @@
             ]);
             if (futRes.ok) { const d = await futRes.json(); result.fut.disaggregated = processICE(d); }
             if (comRes.ok) { const d = await comRes.json(); result.com.disaggregated = processICE(d); }
+            // Dla ICE Brent: wylicz syntetyczny odpowiednik Legacy z danych Disaggregated
+            if (inst.dataPath === 'brent') {
+                const processIceLegacy = data => data.map(row => {
+                    const r = { ...row };
+                    SERIES.ice_legacy.fields.filter(f => f.comp).forEach(f => { r[f.key] = f.comp(r); });
+                    return r;
+                });
+                if (result.fut.disaggregated) result.fut.ice_legacy = processIceLegacy(result.fut.disaggregated);
+                if (result.com.disaggregated) result.com.ice_legacy = processIceLegacy(result.com.disaggregated);
+            }
         } else {
             const fetches = [];
             // CFTC Socrata API
@@ -1072,16 +1115,33 @@
 
         // Report badges + blokada "Ogólny" dla ICE (ICE nie ma formatu Legacy)
         if (inst.source === 'ice') {
-            el.reportBadges.innerHTML =
-                '<span class="report-badge ice">ICE Futures Europe</span>' +
-                '<span class="report-badge dis">Disaggregated</span>';
-            el.reportTypeBtns.forEach(b => {
-                const isDetailed = b.dataset.type === 'detailed';
-                b.classList.toggle('active', isDetailed);
-                b.disabled = !isDetailed;
-                b.style.opacity = isDetailed ? '' : '0.35';
-                b.title = isDetailed ? '' : 'ICE publikuje wyłącznie raport Disaggregated';
-            });
+            const isBrent = inst.dataPath === 'brent';
+            if (isBrent) {
+                // ICE Brent: odblokuj Ogólny (syntetyczny) + Szczegółowy
+                el.reportBadges.innerHTML =
+                    '<span class="report-badge ice">ICE Futures Europe</span>' +
+                    '<span class="report-badge syn">⚗ Syntetyczny</span>' +
+                    '<span class="report-badge dis">Disaggregated</span>';
+                el.reportTypeBtns.forEach(b => {
+                    const isLegacy = b.dataset.type === 'legacy';
+                    b.disabled = false;
+                    b.style.opacity = '';
+                    b.classList.toggle('active', isLegacy);
+                    b.title = isLegacy ? 'Dane syntetyczne — NC = MM + Other, Commercial = PMPU + Swap' : '';
+                });
+            } else {
+                // Pozostałe ICE: tylko Disaggregated
+                el.reportBadges.innerHTML =
+                    '<span class="report-badge ice">ICE Futures Europe</span>' +
+                    '<span class="report-badge dis">Disaggregated</span>';
+                el.reportTypeBtns.forEach(b => {
+                    const isDetailed = b.dataset.type === 'detailed';
+                    b.classList.toggle('active', isDetailed);
+                    b.disabled = !isDetailed;
+                    b.style.opacity = isDetailed ? '' : '0.35';
+                    b.title = isDetailed ? '' : 'ICE publikuje wyłącznie raport Disaggregated';
+                });
+            }
         } else {
             el.reportTypeBtns.forEach(b => { b.disabled = false; b.style.opacity = ''; b.title = ''; });
             el.reportBadges.innerHTML = Object.keys(inst.reports).map(r => {
@@ -1278,8 +1338,6 @@
             const data = dataSource;
             if (!data) return;
 
-            const inv = (s.axis === 'left' && invertL) || (s.axis === 'right' && invertR);
-
             const ls = chart.addLineSeries({
                 color: s.color, lineWidth: 2,
                 priceScaleId: s.axis,
@@ -1295,7 +1353,6 @@
                 let val = fld.comp ? fld.comp(row) : N(row[s.key]);
                 val *= valueMultiplier; // apply config
                 if (isNaN(val)) return;
-                if (inv) val = -val;
                 pts.push({ time, value: val });
             });
 
@@ -1384,7 +1441,6 @@
                 const d = p.seriesData.get(s._ls);
                 if (!d) return;
                 let v = d.value;
-                if ((s.axis === 'left' && invertL) || (s.axis === 'right' && invertR)) v = -v;
 
                 if (s.rpt === 'external') {
                     h += `<div style="display:flex;gap:5px;align-items:center;margin:1px 0"><span style="width:7px;height:7px;border-radius:50%;background:${s.color};flex-shrink:0"></span><span style="color:var(--tx-2)">${getSeriesDisplayLabel(s)}:</span><span style="font-weight:600;margin-left:auto">${v.toFixed(2)}</span></div>`;
@@ -1458,8 +1514,6 @@
                 histData.push({ time: srcData[i].time, value: diff, color: cx });
             }
 
-            const inv = (s.axis === 'left' && invertL) || (s.axis === 'right' && invertR);
-            s._deltaInv = inv;
             const hs = deltaChart.addHistogramSeries({
                 color: s.color,
                 priceScaleId: 'right', // wymuszenie prawej osi, bo jest luz
@@ -1531,7 +1585,6 @@
                 if (!d || isNaN(d.value)) return;
 
                 let diffVal = d.value;
-                if (s._deltaInv) diffVal = -diffVal;
 
                 const sign = diffVal > 0 ? '+' : '';
                 const cCls = diffVal > 0 ? '#10b981' : (diffVal < 0 ? '#ef4444' : 'var(--tx-2)');

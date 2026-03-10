@@ -913,6 +913,13 @@ a {
     border: 1px solid rgba(245, 158, 11, 0.2);
 }
 
+/* Syntetyczny (ICE Brent Legacy) — fiolet */
+.report-badge.syn {
+    background: rgba(139, 92, 246, 0.12);
+    color: #a78bfa;
+    border: 1px solid rgba(139, 92, 246, 0.2);
+}
+
 .mini-badge.ice {
     background: rgba(245, 158, 11, 0.15);
     color: var(--amber);
