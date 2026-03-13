@@ -1,9 +1,13 @@
 name: Update ICE COT Data
 
 on:
-  # Co piątek o 22:00 UTC = 23:00 CET (zimą) — po publikacji ICE (~21:30 UTC)
+  # Co piątek o 22:00 czasu polskiego (dwa crony bo GitHub Actions = UTC)
+  # Zimą (CET = UTC+1): 22:00 PL = 21:00 UTC
+  # Latem (CEST = UTC+2): 22:00 PL = 20:00 UTC
+  # Skrypt jest idempotentny — podwójne uruchomienie nic nie psuje
   schedule:
-    - cron: '0 22 * * 5'
+    - cron: '0 21 * * 5'
+    - cron: '0 20 * * 5'
   # Możliwość ręcznego uruchomienia z panelu GitHub Actions
   workflow_dispatch:
 
