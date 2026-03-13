@@ -6,6 +6,10 @@
     const EP = EP_FUT; // Keep for backward compat
     const EP_MAP = EP; // Alias for compatibility in some handlers
 
+    // ── Yahoo Finance Proxy (Vercel serverless function) ──
+    // After deploying to Vercel, replace with your actual Vercel domain:
+    const YAHOO_PROXY = 'https://cot-proxy.vercel.app/api/yahoo';
+
     // ── Yahoo Finance Mappings ──
     const YF_MAP = {
         '099741': '6E=F',    // EURO FX
@@ -2244,9 +2248,8 @@
 
         try {
             el.chartLoad.style.display = 'flex';
-            const url = encodeURIComponent(`https://query1.finance.yahoo.com/v8/finance/chart/${ticker}?interval=1d&range=10y`);
-            // Attempt with corsproxy.io
-            const res = await fetch(`https://corsproxy.io/?url=${url}`);
+            const res = await fetch(`${YAHOO_PROXY}?ticker=${encodeURIComponent(ticker)}&interval=1d&range=10y`);
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
             const data = await res.json();
 
             if (!data.chart || !data.chart.result) throw new Error("No data returned for ticker.");
