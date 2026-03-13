@@ -2242,14 +2242,42 @@
         if (!ticker) return false;
         if (chartData['external'] && chartData['external'][ticker]) return true;
 
+        const yahooUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${ticker}?interval=1d&range=10y`;
+        const yahooUrl2 = `https://query2.finance.yahoo.com/v8/finance/chart/${ticker}?interval=1d&range=10y`;
+
+        const proxyStrategies = [
+            () => fetch(`https://corsproxy.io/?url=${encodeURIComponent(yahooUrl)}`),
+            () => fetch(`https://corsproxy.io/?url=${encodeURIComponent(yahooUrl2)}`),
+            () => fetch(`https://api.allorigins.win/raw?url=${encodeURIComponent(yahooUrl)}`),
+            () => fetch(`https://api.allorigins.win/raw?url=${encodeURIComponent(yahooUrl2)}`),
+        ];
+
         try {
             el.chartLoad.style.display = 'flex';
-            const url = encodeURIComponent(`https://query1.finance.yahoo.com/v8/finance/chart/${ticker}?interval=1d&range=10y`);
-            // Attempt with corsproxy.io
-            const res = await fetch(`https://corsproxy.io/?url=${url}`);
-            const data = await res.json();
 
-            if (!data.chart || !data.chart.result) throw new Error("No data returned for ticker.");
+            let data = null;
+            let lastError = null;
+
+            for (const strategy of proxyStrategies) {
+                try {
+                    const res = await strategy();
+                    if (!res.ok) {
+                        lastError = new Error(`HTTP ${res.status}`);
+                        continue;
+                    }
+                    const json = await res.json();
+                    if (json.chart && json.chart.result) {
+                        data = json;
+                        break;
+                    }
+                    lastError = new Error("No data in response");
+                } catch (e) {
+                    lastError = e;
+                }
+            }
+
+            if (!data) throw lastError || new Error("All proxy strategies failed");
+
             const resData = data.chart.result[0];
             const timestamps = resData.timestamp;
             const closes = resData.indicators.quote[0].close;
@@ -2282,8 +2310,8 @@
             chartData['external'][ticker] = lineData;
             return true;
         } catch (e) {
-            console.error(e);
-            alert('Nie udało się pobrać danych Yahoo Finance dla: ' + ticker);
+            console.error('Yahoo Finance fetch failed:', e);
+            alert('Nie udało się pobrać danych Yahoo Finance dla: ' + ticker + '\nYahoo może tymczasowo blokować zapytania. Spróbuj ponownie za chwilę.');
             return false;
         } finally {
             el.chartLoad.style.display = 'none';
