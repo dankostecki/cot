@@ -2711,9 +2711,11 @@ a {
     }
 
     /* ── Wysokości wykresów względem widoku, nie stałe piksele ── */
+    /* `svh`, nie `dvh`: dynamiczna jednostka zmienia się przy chowaniu paska
+       adresu w trakcie przewijania, więc wykresy skakały na każdy taki ruch. */
     .chart-container {
         height: 56vh;
-        height: 56dvh;
+        height: 56svh;
         min-height: 300px;
         max-height: 480px;
     }
@@ -2721,13 +2723,13 @@ a {
     /* Panele pochodne mają wysokość w atrybucie style — stąd !important */
     #delta-chart-container,
     #options-chart-container {
-        height: 22dvh !important;
+        height: 22svh !important;
         min-height: 118px;
         max-height: 190px;
     }
 
     #prop-chart-container {
-        height: 26dvh !important;
+        height: 26svh !important;
         min-height: 140px;
         max-height: 220px;
     }
@@ -2748,7 +2750,7 @@ a {
         right: 12px !important;
         left: auto !important;
         width: min(260px, calc(100vw - 24px)) !important;
-        max-height: 60dvh;
+        max-height: 60svh;
         overflow-y: auto;
     }
 
@@ -2756,7 +2758,7 @@ a {
        tu tylko pilnujemy, żeby nie było szersze niż ekran. */
     #export-menu {
         width: min(260px, calc(100vw - 24px)) !important;
-        max-height: 60dvh;
+        max-height: 60svh;
         overflow-y: auto;
     }
 
@@ -2815,7 +2817,7 @@ a {
     }
 
     .chart-container {
-        height: 62dvh;
+        height: 62svh;
         min-height: 170px;
         max-height: none;
     }
@@ -2823,7 +2825,7 @@ a {
     #delta-chart-container,
     #options-chart-container,
     #prop-chart-container {
-        height: 30dvh !important;
+        height: 30svh !important;
         min-height: 90px;
         max-height: none;
     }
@@ -2832,7 +2834,7 @@ a {
 @media (max-width: 480px) {
     .chart-container {
         height: 52vh;
-        height: 52dvh;
+        height: 52svh;
         min-height: 280px;
     }
 
