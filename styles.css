@@ -2774,11 +2774,30 @@ a {
    muszą zostać w zasięgu, inaczej nie da się pobrać obrazka ani wyjść. */
 @media (max-width: 1100px) and (max-height: 560px) and (orientation: landscape) {
 
-    /* Nagłówek aplikacji to logo i ustawienia — w poziomie oddaje miejsce
-       wykresowi. Pasek narzędzi przykleja się wtedy do samej góry
-       (--header-h zjeżdża do 0, bo ukryty element ma zerową wysokość). */
+    /* Nagłówek aplikacji zostaje, bo trzyma ustawienia — ale schudzony do
+       samych ikon. Ukrycie go oddawało wprawdzie pion wykresowi, tyle że
+       zabierało jedyne dojście do ustawień, także na liście instrumentów. */
     #app-header {
-        display: none;
+        padding: 2px var(--sp-md);
+    }
+
+    #app-header .logo-icon {
+        width: 26px;
+        height: 26px;
+    }
+
+    #app-header .logo-icon svg {
+        width: 18px;
+        height: 18px;
+    }
+
+    #app-header h1 {
+        font-size: 0.95rem;
+    }
+
+    #app-header .icon-btn {
+        width: 30px;
+        height: 30px;
     }
 
     /* Pion odzyskujemy z odstępów, nie z wykresu — hojne paddingi z desktopu
@@ -2816,9 +2835,11 @@ a {
         min-height: 0;
     }
 
+    /* Niżej niż wcześniej: nagłówek aplikacji nie jest już chowany, więc pion
+       trzeba oddać z wykresu, żeby całość dalej mieściła się bez przewijania. */
     .chart-container {
-        height: 62svh;
-        min-height: 170px;
+        height: 53svh;
+        min-height: 150px;
         max-height: none;
     }
 
