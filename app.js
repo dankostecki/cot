@@ -617,7 +617,7 @@
         crossSection: $('#cross-series-section'), crossInstrName: $('#cross-instr-name'),
         crossSelect: $('#cross-series-select'), confirmCross: $('#confirm-cross-series'),
         fullscreenBtn: $('#fullscreen-btn'), exportImgBtn: $('#export-img-btn'),
-        exportMenu: $('#export-menu'),
+        exportMenu: $('#export-menu'), exportShareGroup: $('#export-share-group'),
         chartWrapper: $('.chart-wrapper'),
         fullscreenContainer: $('#fullscreen-container'),
         qfToggle: $('#quick-filters-toggle'), qfMenu: $('#quick-filters-menu'), qfOptions: $('#qf-options'),
@@ -2828,7 +2828,19 @@
         return out;
     }
 
-    async function deliverExportImage(out, suffix) {
+    // Czy przeglądarka potrafi udostępnić plik obrazka — sprawdzamy realnym
+    // plikiem, bo canShare() bez `files` odpowiada na inne pytanie.
+    function canShareImageFile() {
+        try {
+            if (!navigator.canShare || !navigator.share) return false;
+            const probe = new File([new Blob([new Uint8Array(1)])], 'a.png', { type: 'image/png' });
+            return navigator.canShare({ files: [probe] });
+        } catch (e) {
+            return false;
+        }
+    }
+
+    async function deliverExportImage(out, suffix, action) {
         const title = (el.chartName?.textContent || 'COT').trim();
         const slug = title.replace(/[^\p{L}\p{N}]+/gu, '-').replace(/^-|-$/g, '').slice(0, 60) || 'chart';
         const dateSlug = ((el.reportDate?.textContent || '').match(/\d{4}-\d{2}-\d{2}/) || [])[0]
@@ -2838,9 +2850,21 @@
         const blob = await new Promise(res => out.toBlob(res, 'image/png'));
         if (!blob) throw new Error('Nie udało się utworzyć obrazka.');
 
-        // Celowo bez navigator.share(): na iOS otwiera on arkusz udostępniania,
-        // z którego obrazek da się najwyżej skopiować — a skopiowany nie wkleja
-        // się do części aplikacji. Pobranie daje plik, który można załączyć.
+        // Udostępnianie tylko na wyraźne życzenie. Domyślne wywoływanie
+        // navigator.share() na iOS podstawiało arkusz zamiast zapisu pliku,
+        // a skopiowany stamtąd obrazek nie wkleja się do części aplikacji.
+        if (action === 'share') {
+            const file = new File([blob], filename, { type: 'image/png' });
+            try {
+                await navigator.share({ files: [file] });
+                return;
+            } catch (err) {
+                if (err && err.name === 'AbortError') return; // użytkownik anulował
+                // realny błąd — spadamy do pobrania, żeby nie zostawić go z niczym
+                console.error('Udostępnianie nie powiodło się, pobieram:', err);
+            }
+        }
+
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
@@ -2947,7 +2971,7 @@
         }
     }
 
-    async function runExport(key) {
+    async function runExport(key, action) {
         if (!chart) { alert('Brak wykresu do zapisania.'); return; }
         const fmt = EXPORT_FORMATS[key];
         if (!fmt) return;
@@ -2956,7 +2980,7 @@
         if (btn) { btn.disabled = true; btn.style.opacity = '0.5'; }
         try {
             const out = key === 'screen' ? await exportScreenshot() : await exportAtRatio(fmt);
-            await deliverExportImage(out, key === 'screen' ? '' : '_' + key);
+            await deliverExportImage(out, key === 'screen' ? '' : '_' + key, action);
         } catch (e) {
             console.error(e);
             alert('Nie udało się zapisać obrazka wykresu.');
@@ -3000,9 +3024,14 @@
             b.onclick = (e) => {
                 e.stopPropagation();
                 el.exportMenu.style.display = 'none';
-                runExport(b.dataset.export);
+                runExport(b.dataset.export, b.dataset.action);
             };
         });
+
+        // Sekcja udostępniania tylko tam, gdzie faktycznie zadziała
+        if (el.exportShareGroup && canShareImageFile()) {
+            el.exportShareGroup.style.display = '';
+        }
     }
 
     // Fullscreen toggle
