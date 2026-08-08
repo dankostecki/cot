@@ -2926,6 +2926,12 @@
         const cssW = dpr >= 3 ? Math.round(outW / 1.45) : outW;
         const k = cssW / outW;
 
+        // Zakres bierzemy z samego wykresu, a nie odtwarzamy z przycisku: obraz ma
+        // pokazywać dokładnie to okno, które widać — także po ręcznym przesunięciu.
+        // Zakres logiczny to indeksy słupków, więc przenosi się bez zmian na inną
+        // szerokość kontenera.
+        const savedLogical = chart.timeScale().getVisibleLogicalRange();
+
         const savedScroll = window.scrollY;
         const fsc = el.fullscreenContainer;
         const savedFsc = fsc ? fsc.style.cssText : '';
@@ -2951,7 +2957,9 @@
                 layout: { fontSize: 13 },
                 rightPriceScale: { minimumWidth: 90 },
                 leftPriceScale: { minimumWidth: 90 },
-                timeScale: { rightOffset: 6, barSpacing: 8 },
+                // Bez `barSpacing` i `rightOffset`: pierwsze narzucało gęstość
+                // słupków, drugie przesuwało okno o swoją wartość, więc oba
+                // psuły skopiowany zakres. Osi czasu nie ruszamy.
                 handleScale: { pinch: false },
                 handleScroll: { vertTouchDrag: false },
             };
@@ -2961,7 +2969,8 @@
                 p.box.style.height = hCss + 'px';
                 p.chart.applyOptions({ ...exportOpts, width: cssW, height: hCss });
             });
-            setTimeRange(currentRange);
+            if (savedLogical) chart.timeScale().setVisibleLogicalRange(savedLogical);
+            else setTimeRange(currentRange);
             await nextFrames(4);
 
             const shots = panes.map(p => p.chart.takeScreenshot());
@@ -2976,7 +2985,8 @@
                 width: p.box.clientWidth,
                 height: p.box.clientHeight,
             }));
-            setTimeRange(currentRange);
+            if (savedLogical) chart.timeScale().setVisibleLogicalRange(savedLogical);
+            else setTimeRange(currentRange);
             scheduleScaleSync();
             veil.remove();
             window.scrollTo(0, savedScroll);
