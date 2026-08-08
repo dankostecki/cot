@@ -831,6 +831,11 @@ a {
     letter-spacing: -0.02em;
 }
 
+/* Pusty element łamiący rząd flexa — aktywny tylko na wąskich ekranach */
+.title-row-break {
+    display: none;
+}
+
 .instrument-meta-row {
     display: flex;
     align-items: center;
@@ -1691,13 +1696,39 @@ a {
         height: 360px;
     }
 
+    /* Nazwa instrumentu dzieliła rząd z badge'ami i zostawał z niej sam skrót.
+       Łamiemy rząd za gwiazdką, żeby dostała całą pierwszą linię. */
+    .title-row-break {
+        display: block;
+        flex-basis: 100%;
+        height: 0;
+        margin: 0;
+    }
+
+    .instrument-title-row {
+        row-gap: 6px;
+    }
+
     .instrument-title-row h2 {
         font-size: 1.1rem;
-        flex: 1;
+        flex: 1 1 auto;
         min-width: 0;
         white-space: nowrap;
         overflow: hidden;
         text-overflow: ellipsis;
+    }
+
+    /* Data trafia w ten sam rząd co badge'y — bez odpychania na prawo */
+    #chart-report-date {
+        margin-left: 0 !important;
+    }
+
+    /* Drugi rząd musi zmieścić badge'y i datę, stąd ciaśniejsze pigułki */
+    .report-badge,
+    .instrument-title-row .badge {
+        font-size: 0.6rem;
+        padding: 2px 7px;
+        letter-spacing: 0.02em;
     }
 
     .add-series-panel {
@@ -2768,7 +2799,8 @@ a {
 
     #report-badges,
     #chart-contract-units,
-    #chart-report-date {
+    #chart-report-date,
+    .title-row-break {
         display: none;
     }
 
@@ -2802,6 +2834,12 @@ a {
 
     /* Jednostki kontraktu zabierają cały wiersz nagłówka, a rzadko są potrzebne */
     #chart-contract-units {
+        display: none;
+    }
+
+    /* Przy tej szerokości „Raport z dnia:" wypycha datę do trzeciego rzędu —
+       sama data obok badge'ów raportu jest czytelna bez prefiksu. */
+    .rd-label {
         display: none;
     }
 }
