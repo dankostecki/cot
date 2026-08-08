@@ -1237,8 +1237,11 @@
     // ============================================
     // Chart
     // ============================================
-    // Wykrywanie ekranu dotykowego / mobilnego — używane do dostrojenia wykresów
-    const isMobile = () => window.matchMedia('(max-width: 768px)').matches;
+    // Wykrywanie ekranu dotykowego / mobilnego — używane do dostrojenia wykresów.
+    // Warunek musi być identyczny z tym w styles.css, inaczej telefon w poziomie
+    // (~844px szerokości) dostawałby desktopowe opcje przy mobilnym layoucie.
+    const MOBILE_MQ = '(max-width: 768px), (max-width: 1100px) and (max-height: 560px) and (orientation: landscape)';
+    const isMobile = () => window.matchMedia(MOBILE_MQ).matches;
 
     function getTheme() {
         const dk = document.documentElement.getAttribute('data-theme') === 'dark';
