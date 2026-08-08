@@ -2705,13 +2705,21 @@ a {
         display: none;
     }
 
-    /* Menu filtrów musi uciec z przewijanego paska, inaczej jest przycięte
+    /* Rozwijane menu muszą uciec z przewijanego paska, inaczej są przycięte
        i pozycjonowane względem szerokości przewijanej treści (poza ekranem).
        position: fixed nie jest przycinany przez overflow przodka. */
     #quick-filters-menu {
         position: fixed !important;
         right: 12px !important;
         left: auto !important;
+        width: min(260px, calc(100vw - 24px)) !important;
+        max-height: 60dvh;
+        overflow-y: auto;
+    }
+
+    /* Menu eksportu jest `fixed` na każdej szerokości i pozycjonowane z JS —
+       tu tylko pilnujemy, żeby nie było szersze niż ekran. */
+    #export-menu {
         width: min(260px, calc(100vw - 24px)) !important;
         max-height: 60dvh;
         overflow-y: auto;
@@ -2796,4 +2804,13 @@ a {
     #chart-contract-units {
         display: none;
     }
+}
+
+/* Wymiary przy opcjach eksportu — drugorzędne, więc wyszarzone i dosunięte w prawo */
+.export-dim {
+    margin-left: auto;
+    padding-left: 12px;
+    font-size: 0.72rem;
+    color: var(--tx-3);
+    font-variant-numeric: tabular-nums;
 }

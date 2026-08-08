@@ -617,6 +617,7 @@
         crossSection: $('#cross-series-section'), crossInstrName: $('#cross-instr-name'),
         crossSelect: $('#cross-series-select'), confirmCross: $('#confirm-cross-series'),
         fullscreenBtn: $('#fullscreen-btn'), exportImgBtn: $('#export-img-btn'),
+        exportMenu: $('#export-menu'),
         chartWrapper: $('.chart-wrapper'),
         fullscreenContainer: $('#fullscreen-container'),
         qfToggle: $('#quick-filters-toggle'), qfMenu: $('#quick-filters-menu'), qfOptions: $('#qf-options'),
@@ -1289,12 +1290,10 @@
     // Obrót telefonu potrafi przekroczyć próg 768px (np. 390 → 844).
     // Dostrajamy wtedy opcje zależne od mobile, bez pełnej przebudowy wykresu,
     // żeby nie zgubić aktualnie ustawionego zakresu czasu.
-    let _wasMobile = isMobile();
-    function syncMobileChartOptions() {
-        const mob = isMobile();
-        if (mob === _wasMobile) return;
-        _wasMobile = mob;
-        const opts = {
+    // Opcje zależne od rozmiaru ekranu — współdzielone przez reakcję na obrót
+    // i przez eksport, który musi je przywrócić po renderze poza ekranem.
+    function mobileChartOpts(mob) {
+        return {
             layout: { fontSize: mob ? 10 : 12 },
             rightPriceScale: { minimumWidth: mob ? 46 : 85 },
             leftPriceScale: { minimumWidth: mob ? 46 : 85 },
@@ -1302,7 +1301,14 @@
             handleScale: { pinch: mob },
             handleScroll: { vertTouchDrag: !mob },
         };
-        [chart, deltaChart, optionsChart, propChart].forEach(c => c && c.applyOptions(opts));
+    }
+
+    let _wasMobile = isMobile();
+    function syncMobileChartOptions() {
+        const mob = isMobile();
+        if (mob === _wasMobile) return;
+        _wasMobile = mob;
+        [chart, deltaChart, optionsChart, propChart].forEach(c => c && c.applyOptions(mobileChartOpts(mob)));
     }
     window.addEventListener('resize', syncMobileChartOptions);
     window.addEventListener('orientationchange', syncMobileChartOptions);
@@ -2625,109 +2631,100 @@
         return lines;
     }
 
-    async function exportChartImage() {
-        if (!chart) { alert('Brak wykresu do zapisania.'); return; }
+    // Formaty eksportu. `screen` to zrzut tego, co widać; pozostałe renderują
+    // wykresy od nowa w stałej proporcji, niezależnie od urządzenia i orientacji.
+    const EXPORT_FORMATS = {
+        screen: { label: 'Zrzut ekranu' },
+        '16x9': { label: '16:9', w: 1600, h: 900 },
+        '4x3': { label: '4:3', w: 1440, h: 1080 },
+    };
 
-        const btn = el.exportImgBtn;
-        if (btn) { btn.disabled = true; btn.style.opacity = '0.5'; }
+    const nextFrames = n => new Promise(res => {
+        const step = () => (--n <= 0 ? res() : requestAnimationFrame(step));
+        requestAnimationFrame(step);
+    });
 
-        try {
-            // ── Zbierz widoczne panele w kolejności wyświetlania ──
-            const panes = [{ c: chart, box: el.chartBox }];
-            [
-                { c: deltaChart, wrap: el.deltaChartWrap, box: el.deltaChartBox },
-                { c: optionsChart, wrap: el.optionsChartWrap, box: el.optionsChartBox },
-                { c: propChart, wrap: el.propChartWrap, box: el.propChartBox },
-            ].forEach(p => {
-                if (p.c && p.wrap && p.wrap.style.display !== 'none') panes.push({ c: p.c, box: p.box });
-            });
+    function visibleExportPanes() {
+        const panes = [{ chart, box: el.chartBox }];
+        [
+            { chart: deltaChart, wrap: el.deltaChartWrap, box: el.deltaChartBox },
+            { chart: optionsChart, wrap: el.optionsChartWrap, box: el.optionsChartBox },
+            { chart: propChart, wrap: el.propChartWrap, box: el.propChartBox },
+        ].forEach(p => {
+            if (p.chart && p.wrap && p.wrap.style.display !== 'none') {
+                panes.push({ chart: p.chart, box: p.box });
+            }
+        });
+        return panes;
+    }
 
-            const shots = panes.map(p => p.c.takeScreenshot());
-            const imgW = Math.max(...shots.map(s => s.width));
-            // Skala względem pikseli CSS — nagłówek ma wyglądać tak samo na każdym DPR
-            const scale = Math.max(1, imgW / Math.max(1, panes[0].box.clientWidth));
-            const S = v => Math.round(v * scale);
+    // Mierzy nagłówek i stopkę dla zadanej skali, zwracając wysokości oraz
+    // funkcje rysujące. Rozdzielenie pomiaru od rysowania jest konieczne, bo
+    // przy stałej proporcji wysokość wykresów wynika z tego, co zostanie.
+    function buildExportChrome(scale, innerW) {
+        const S = v => Math.round(v * scale);
+        const dk = document.documentElement.getAttribute('data-theme') === 'dark';
+        const txMain = dk ? '#e6edf7' : '#111827';
+        const txDim = dk ? '#6b7a94' : '#6b7280';
 
-            const dk = document.documentElement.getAttribute('data-theme') === 'dark';
-            const bg = dk ? '#0a0f1a' : '#ffffff';
-            const txMain = dk ? '#e6edf7' : '#111827';
-            const txDim = dk ? '#6b7a94' : '#6b7280';
-            const bd = dk ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)';
+        const title = (el.chartName?.textContent || 'COT').trim();
+        const activeTxt = sel => {
+            const b = document.querySelector(sel + ' .cbar-btn.active');
+            return b ? b.textContent.trim() : '';
+        };
+        const metaParts = [
+            activeTxt('#report-type-toggle'),
+            activeTxt('#data-type-toggle'),
+            activeTxt('#position-type-toggle'),
+            currentRange,
+            (el.chartUnits?.textContent || '').trim(),
+            (el.reportDate?.textContent || '').trim(),
+        ].filter(Boolean);
 
-            // ── Metadane z DOM (dzięki temu są już przetłumaczone) ──
-            const title = (el.chartName?.textContent || 'COT').trim();
-            const activeTxt = sel => {
-                const b = document.querySelector(sel + ' .cbar-btn.active');
-                return b ? b.textContent.trim() : '';
-            };
-            const metaParts = [
-                activeTxt('#report-type-toggle'),
-                activeTxt('#data-type-toggle'),
-                activeTxt('#position-type-toggle'),
-                (el.chartUnits?.textContent || '').trim(),
-                (el.reportDate?.textContent || '').trim(),
-            ].filter(Boolean);
+        const legendItems = activeSeries
+            .filter(s => s.visible !== false)
+            .map(s => ({ label: getSeriesDisplayLabel(s), color: s.color }));
 
-            const legendItems = activeSeries
-                .filter(s => s.visible !== false)
-                .map(s => ({ label: getSeriesDisplayLabel(s), color: s.color }));
+        const stamp = new Date().toLocaleDateString('pl-PL');
+        const footParts = ['Źródło: CFTC / ICE Futures Europe', `wygenerowano ${stamp}`, location.hostname];
 
-            const stamp = new Date().toLocaleDateString('pl-PL');
-            const footParts = ['Źródło: CFTC / ICE Futures Europe', `wygenerowano ${stamp}`, location.hostname];
+        const measure = document.createElement('canvas').getContext('2d');
+        const titleFont = `700 ${S(21)}px Inter, system-ui, sans-serif`;
+        const metaFont = `${S(12)}px Inter, system-ui, sans-serif`;
+        const legendFont = `500 ${S(12)}px Inter, system-ui, sans-serif`;
+        const footFont = `${S(11)}px Inter, system-ui, sans-serif`;
 
-            // ── Pomiar: wszystko musi zmieścić się w szerokości obrazka ──
-            const pad = S(20);
-            const innerW = imgW - pad * 2;
-            const measure = document.createElement('canvas').getContext('2d');
+        measure.font = titleFont;
+        const titleTxt = truncateText(measure, title, innerW);
+        measure.font = metaFont;
+        const metaLines = wrapJoined(measure, metaParts, innerW, '  •  ');
+        measure.font = legendFont;
+        const dotW = S(16), gapW = S(14), lineH = S(20);
+        const legendLines = layoutLegend(measure, legendItems, innerW, dotW, gapW);
+        measure.font = footFont;
+        const footLines = wrapJoined(measure, footParts, innerW, '  •  ');
 
-            const titleFont = `700 ${S(21)}px Inter, system-ui, sans-serif`;
-            const metaFont = `${S(12)}px Inter, system-ui, sans-serif`;
-            const legendFont = `500 ${S(12)}px Inter, system-ui, sans-serif`;
-            const footFont = `${S(11)}px Inter, system-ui, sans-serif`;
+        const pad = S(20);
+        const metaLineH = S(17), footLineH = S(15);
+        const headerH = pad + S(28)
+            + metaLines.length * metaLineH
+            + (legendLines.length ? S(12) + legendLines.length * lineH : 0)
+            + pad;
+        const footerH = S(14) + footLines.length * footLineH + S(12);
 
-            measure.font = titleFont;
-            const titleTxt = truncateText(measure, title, innerW);
-
-            measure.font = metaFont;
-            const metaLines = wrapJoined(measure, metaParts, innerW, '  •  ');
-
-            measure.font = legendFont;
-            const dotW = S(16), gapW = S(14), lineH = S(20);
-            const legendLines = layoutLegend(measure, legendItems, innerW, dotW, gapW);
-
-            measure.font = footFont;
-            const footLines = wrapJoined(measure, footParts, innerW, '  •  ');
-
-            const metaLineH = S(17), footLineH = S(15);
-            const headerH = pad + S(28)
-                + metaLines.length * metaLineH
-                + (legendLines.length ? S(12) + legendLines.length * lineH : 0)
-                + pad;
-            const footerH = S(14) + footLines.length * footLineH + S(12);
-            const gap = S(1);
-            const chartsH = shots.reduce((a, s) => a + s.height, 0) + gap * (shots.length - 1);
-
-            // ── Kompozycja ──
-            const out = document.createElement('canvas');
-            out.width = imgW;
-            out.height = headerH + chartsH + footerH;
-            const ctx = out.getContext('2d');
-            ctx.fillStyle = bg;
-            ctx.fillRect(0, 0, out.width, out.height);
-            ctx.textBaseline = 'top';
-
-            let y = pad;
-
-            ctx.fillStyle = txMain;
-            ctx.font = titleFont;
-            ctx.fillText(titleTxt, pad, y);
-            y += S(28);
-
-            ctx.fillStyle = txDim;
-            ctx.font = metaFont;
-            metaLines.forEach(l => { ctx.fillText(l, pad, y); y += metaLineH; });
-
-            if (legendLines.length) {
+        return {
+            title, headerH, footerH, pad,
+            drawHeader(ctx) {
+                let y = pad;
+                ctx.textBaseline = 'top';
+                ctx.fillStyle = txMain;
+                ctx.font = titleFont;
+                ctx.fillText(titleTxt, pad, y);
+                y += S(28);
+                ctx.fillStyle = txDim;
+                ctx.font = metaFont;
+                metaLines.forEach(l => { ctx.fillText(l, pad, y); y += metaLineH; });
+                if (!legendLines.length) return;
                 y += S(12);
                 ctx.font = legendFont;
                 legendLines.forEach(line => {
@@ -2743,55 +2740,188 @@
                     });
                     y += lineH;
                 });
-            }
+            },
+            drawFooter(ctx, y, bd) {
+                ctx.fillStyle = bd;
+                ctx.fillRect(pad, y, innerW, Math.max(1, S(1)));
+                y += S(14);
+                ctx.fillStyle = txDim;
+                ctx.font = footFont;
+                ctx.textBaseline = 'top';
+                footLines.forEach(l => { ctx.fillText(l, pad, y); y += footLineH; });
+            },
+        };
+    }
 
-            y = headerH;
-            shots.forEach((s, i) => {
-                ctx.drawImage(s, 0, y);
-                y += s.height;
-                if (i < shots.length - 1) {
-                    ctx.fillStyle = bd;
-                    ctx.fillRect(0, y, out.width, gap);
-                    y += gap;
-                }
+    // Skleja zrzuty paneli z nagłówkiem i stopką. `paneHeights` są w pikselach
+    // wyjściowych, więc ta sama funkcja obsługuje zrzut i stałą proporcję.
+    function composeExportImage(shots, paneHeights, outW, chrome, forcedH) {
+        const dk = document.documentElement.getAttribute('data-theme') === 'dark';
+        const bg = dk ? '#0a0f1a' : '#ffffff';
+        const bd = dk ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)';
+        const gap = 1;
+        const chartsH = paneHeights.reduce((a, b) => a + b, 0) + gap * (shots.length - 1);
+
+        const out = document.createElement('canvas');
+        out.width = outW;
+        out.height = forcedH || (chrome.headerH + chartsH + chrome.footerH);
+        const ctx = out.getContext('2d');
+        ctx.fillStyle = bg;
+        ctx.fillRect(0, 0, out.width, out.height);
+
+        chrome.drawHeader(ctx);
+
+        let y = chrome.headerH;
+        shots.forEach((s, i) => {
+            ctx.drawImage(s, 0, 0, s.width, s.height, 0, y, outW, paneHeights[i]);
+            y += paneHeights[i];
+            if (i < shots.length - 1) {
+                ctx.fillStyle = bd;
+                ctx.fillRect(0, y, outW, gap);
+                y += gap;
+            }
+        });
+
+        chrome.drawFooter(ctx, out.height - chrome.footerH, bd);
+        return out;
+    }
+
+    async function deliverExportImage(out, suffix) {
+        const title = (el.chartName?.textContent || 'COT').trim();
+        const slug = title.replace(/[^\p{L}\p{N}]+/gu, '-').replace(/^-|-$/g, '').slice(0, 60) || 'chart';
+        const dateSlug = ((el.reportDate?.textContent || '').match(/\d{4}-\d{2}-\d{2}/) || [])[0]
+            || new Date().toISOString().slice(0, 10);
+        const filename = `COT_${slug}_${dateSlug}${suffix}.png`;
+
+        const blob = await new Promise(res => out.toBlob(res, 'image/png'));
+        if (!blob) throw new Error('Nie udało się utworzyć obrazka.');
+
+        // Na mobile natywny arkusz udostępniania pozwala zapisać do Zdjęć lub wysłać dalej
+        const file = new File([blob], filename, { type: 'image/png' });
+        if (navigator.canShare && navigator.canShare({ files: [file] })) {
+            try {
+                await navigator.share({ files: [file], title });
+                return;
+            } catch (err) {
+                if (err && err.name === 'AbortError') return; // użytkownik anulował
+                // w innym wypadku spadamy do zwykłego pobierania
+            }
+        }
+
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
+    }
+
+    // ── Ścieżka 1: zrzut tego, co widać na ekranie ──
+    async function exportScreenshot() {
+        const panes = visibleExportPanes();
+        const shots = panes.map(p => p.chart.takeScreenshot());
+        const outW = Math.max(...shots.map(s => s.width));
+        const scale = Math.max(1, outW / Math.max(1, panes[0].box.clientWidth));
+        const chrome = buildExportChrome(scale, outW - Math.round(20 * scale) * 2);
+        const paneHeights = shots.map(s => Math.round(s.height * (outW / s.width)));
+        return composeExportImage(shots, paneHeights, outW, chrome);
+    }
+
+    // ── Ścieżka 2: render od nowa w stałej proporcji ──
+    // Wykresy są chwilowo przenoszone poza ekran i skalowane do rozmiaru
+    // docelowego, więc obrazek powstaje tym samym kodem renderującym co widok —
+    // nie może się z nim rozjechać — ale bez kompromisów zrobionych pod telefon.
+    async function exportAtRatio(fmt) {
+        const { w: outW, h: outH } = fmt;
+        const scale = outW / 960;
+        const chrome = buildExportChrome(scale, outW - Math.round(20 * scale) * 2);
+        const chartsH = outH - chrome.headerH - chrome.footerH;
+        if (chartsH < 120) throw new Error('Za mało miejsca na wykres w tej proporcji.');
+
+        const panes = visibleExportPanes();
+        // Panele dzielą wysokość proporcjonalnie do tego, jak są ustawione na ekranie
+        const weights = panes.map(p => Math.max(1, p.box.clientHeight));
+        const wSum = weights.reduce((a, b) => a + b, 0);
+        const gap = 1;
+        const avail = chartsH - gap * (panes.length - 1);
+        const paneHeights = weights.map(w => Math.round(avail * w / wSum));
+        paneHeights[0] += avail - paneHeights.reduce((a, b) => a + b, 0); // reszta z zaokrągleń
+
+        // Szerokość w pikselach CSS: przy wysokim DPR zrzut i tak wychodzi
+        // większy niż cel i jest zmniejszany, więc nie ma sensu renderować
+        // 1600 CSS px na telefonie — to tylko zżera pamięć.
+        const dpr = window.devicePixelRatio || 1;
+        const cssW = dpr >= 3 ? Math.round(outW / 1.45) : outW;
+        const k = cssW / outW;
+
+        const savedScroll = window.scrollY;
+        const fsc = el.fullscreenContainer;
+        const savedFsc = fsc ? fsc.style.cssText : '';
+        const savedBoxes = panes.map(p => p.box.style.cssText);
+
+        // Zasłona — bez niej użytkownik zobaczyłby, jak układ na chwilę znika
+        const veil = document.createElement('div');
+        veil.style.cssText = 'position:fixed;inset:0;z-index:9998;display:flex;align-items:center;'
+            + 'justify-content:center;background:var(--bg-0);';
+        veil.innerHTML = '<div style="text-align:center"><div class="spinner"></div>'
+            + '<p style="margin-top:12px;color:var(--tx-2);font-size:.85rem">Generowanie obrazka…</p></div>';
+        document.body.appendChild(veil);
+
+        try {
+            if (fsc) {
+                fsc.style.position = 'fixed';
+                fsc.style.left = '-100000px';
+                fsc.style.top = '0';
+                fsc.style.width = cssW + 'px';
+            }
+            // Pełnowymiarowe osie i czcionki, niezależnie od tego, na czym klikamy
+            const exportOpts = {
+                layout: { fontSize: 13 },
+                rightPriceScale: { minimumWidth: 90 },
+                leftPriceScale: { minimumWidth: 90 },
+                timeScale: { rightOffset: 6, barSpacing: 8 },
+                handleScale: { pinch: false },
+                handleScroll: { vertTouchDrag: false },
+            };
+            panes.forEach((p, i) => {
+                const hCss = Math.max(60, Math.round(paneHeights[i] * k));
+                p.box.style.width = cssW + 'px';
+                p.box.style.height = hCss + 'px';
+                p.chart.applyOptions({ ...exportOpts, width: cssW, height: hCss });
             });
+            applyRange(currentRange);
+            await nextFrames(4);
 
-            ctx.fillStyle = bd;
-            ctx.fillRect(pad, y, innerW, Math.max(1, S(1)));
-            y += S(14);
-            ctx.fillStyle = txDim;
-            ctx.font = footFont;
-            footLines.forEach(l => { ctx.fillText(l, pad, y); y += footLineH; });
+            const shots = panes.map(p => p.chart.takeScreenshot());
+            return composeExportImage(shots, paneHeights, outW, chrome, outH);
+        } finally {
+            if (fsc) fsc.style.cssText = savedFsc;
+            panes.forEach((p, i) => { p.box.style.cssText = savedBoxes[i]; });
+            await nextFrames(1);
+            const mob = isMobile();
+            panes.forEach(p => p.chart.applyOptions({
+                ...mobileChartOpts(mob),
+                width: p.box.clientWidth,
+                height: p.box.clientHeight,
+            }));
+            applyRange(currentRange);
+            veil.remove();
+            window.scrollTo(0, savedScroll);
+        }
+    }
 
-            // ── Zapis / udostępnienie ──
-            const slug = title.replace(/[^\p{L}\p{N}]+/gu, '-').replace(/^-|-$/g, '').slice(0, 60) || 'chart';
-            const dateSlug = ((el.reportDate?.textContent || '').match(/\d{4}-\d{2}-\d{2}/) || [])[0]
-                || new Date().toISOString().slice(0, 10);
-            const filename = `COT_${slug}_${dateSlug}.png`;
+    async function runExport(key) {
+        if (!chart) { alert('Brak wykresu do zapisania.'); return; }
+        const fmt = EXPORT_FORMATS[key];
+        if (!fmt) return;
 
-            const blob = await new Promise(res => out.toBlob(res, 'image/png'));
-            if (!blob) throw new Error('Nie udało się utworzyć obrazka.');
-
-            // Na mobile natywny arkusz udostępniania pozwala zapisać do Zdjęć lub wysłać dalej
-            const file = new File([blob], filename, { type: 'image/png' });
-            if (navigator.canShare && navigator.canShare({ files: [file] })) {
-                try {
-                    await navigator.share({ files: [file], title });
-                    return;
-                } catch (err) {
-                    if (err && err.name === 'AbortError') return; // użytkownik anulował
-                    // w innym wypadku spadamy do zwykłego pobierania
-                }
-            }
-
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = filename;
-            document.body.appendChild(a);
-            a.click();
-            a.remove();
-            setTimeout(() => URL.revokeObjectURL(url), 1000);
+        const btn = el.exportImgBtn;
+        if (btn) { btn.disabled = true; btn.style.opacity = '0.5'; }
+        try {
+            const out = key === 'screen' ? await exportScreenshot() : await exportAtRatio(fmt);
+            await deliverExportImage(out, key === 'screen' ? '' : '_' + key);
         } catch (e) {
             console.error(e);
             alert('Nie udało się zapisać obrazka wykresu.');
@@ -2800,7 +2930,45 @@
         }
     }
 
-    if (el.exportImgBtn) el.exportImgBtn.onclick = exportChartImage;
+    // ── Menu wyboru formatu przy przycisku eksportu ──
+    if (el.exportImgBtn && el.exportMenu) {
+        // Menu jest zawsze `fixed` i pozycjonowane z JS: na mobile pasek jest
+        // kontenerem przewijanym, a na desktopie grupa z przyciskiem potrafi
+        // stać przy lewej krawędzi, gdzie wyrównanie do prawej wyjeżdża z ekranu.
+        const anchorExportMenu = () => {
+            const btnR = el.exportImgBtn.getBoundingClientRect();
+            const bar = el.exportImgBtn.closest('.compact-bar');
+            const barR = bar ? bar.getBoundingClientRect() : btnR;
+            const mw = el.exportMenu.offsetWidth || 230;
+            let left = Math.min(btnR.right - mw, window.innerWidth - mw - 8);
+            el.exportMenu.style.left = Math.max(8, Math.round(left)) + 'px';
+            el.exportMenu.style.right = 'auto';
+            el.exportMenu.style.top = Math.round(Math.max(btnR.bottom, barR.bottom) + 6) + 'px';
+        };
+
+        el.exportImgBtn.onclick = (e) => {
+            e.stopPropagation();
+            const isOpen = el.exportMenu.style.display === 'block';
+            el.exportMenu.style.display = isOpen ? 'none' : 'block';
+            if (!isOpen) anchorExportMenu();
+        };
+        document.addEventListener('click', (e) => {
+            if (el.exportMenu.style.display === 'block'
+                && !el.exportMenu.contains(e.target) && !el.exportImgBtn.contains(e.target)) {
+                el.exportMenu.style.display = 'none';
+            }
+        });
+        window.addEventListener('resize', () => {
+            if (el.exportMenu.style.display === 'block') anchorExportMenu();
+        });
+        el.exportMenu.querySelectorAll('[data-export]').forEach(b => {
+            b.onclick = (e) => {
+                e.stopPropagation();
+                el.exportMenu.style.display = 'none';
+                runExport(b.dataset.export);
+            };
+        });
+    }
 
     // Fullscreen toggle
     if (el.fullscreenBtn) {
