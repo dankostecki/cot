@@ -2344,6 +2344,9 @@
     el.ranges.forEach(btn => btn.onclick = () => {
         el.ranges.forEach(b => b.classList.remove('active'));
         btn.classList.add('active');
+        // Bez tego wybór żył wyłącznie w klasie `active` na przycisku:
+        // przebudowa wykresu i eksport wracały do wartości domyślnej.
+        currentRange = btn.dataset.range;
         if (chart) setTimeRange(btn.dataset.range);
     });
 
@@ -2891,7 +2894,7 @@
                 p.box.style.height = hCss + 'px';
                 p.chart.applyOptions({ ...exportOpts, width: cssW, height: hCss });
             });
-            applyRange(currentRange);
+            setTimeRange(currentRange);
             await nextFrames(4);
 
             const shots = panes.map(p => p.chart.takeScreenshot());
@@ -2906,7 +2909,7 @@
                 width: p.box.clientWidth,
                 height: p.box.clientHeight,
             }));
-            applyRange(currentRange);
+            setTimeRange(currentRange);
             veil.remove();
             window.scrollTo(0, savedScroll);
         }
