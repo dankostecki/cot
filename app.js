@@ -2821,14 +2821,36 @@
 
     // Quick Filters Menu Toggle
     if (el.qfToggle) {
+        // Na mobile pasek narzędzi jest kontenerem przewijanym (overflow-x),
+        // więc absolutnie pozycjonowane menu byłoby przycięte i wylądowałoby
+        // poza ekranem — `right: 0` liczy się względem szerokości przewijanej
+        // treści, nie widocznej. Dlatego przypinamy je do viewportu.
+        // `top` jest ustawiony inline w HTML, więc wyczyszczenie go zepsułoby
+        // desktop — zapamiętujemy wartość wyjściową i wracamy do niej.
+        const qfTopDefault = el.qfMenu.style.top;
+
+        const anchorQfMenu = () => {
+            if (!isMobile()) {
+                el.qfMenu.style.top = qfTopDefault;
+                return;
+            }
+            const bar = el.qfToggle.closest('.compact-bar');
+            const b = (bar || el.qfToggle).getBoundingClientRect();
+            el.qfMenu.style.top = Math.round(b.bottom + 6) + 'px';
+        };
+
         el.qfToggle.onclick = (e) => {
             e.stopPropagation();
             const isOpen = el.qfMenu.style.display === 'block';
             el.qfMenu.style.display = isOpen ? 'none' : 'block';
             if (!isOpen) {
                 buildQuickFiltersMenu();
+                anchorQfMenu();
             }
         };
+        window.addEventListener('resize', () => {
+            if (el.qfMenu.style.display === 'block') anchorQfMenu();
+        });
         document.addEventListener('click', (e) => {
             if (el.qfMenu && el.qfMenu.style.display === 'block' && !el.qfMenu.contains(e.target) && !el.qfToggle.contains(e.target)) {
                 el.qfMenu.style.display = 'none';
