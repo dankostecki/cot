@@ -2148,7 +2148,9 @@
 
         // Show report date
         const latestDate = latest.report_date_as_yyyy_mm_dd ? latest.report_date_as_yyyy_mm_dd.substring(0, 10) : '—';
-        el.reportDate.textContent = t('Raport z dnia:') + ' ' + latestDate;
+        // Etykieta w osobnym spanie — na najwęższych ekranach chowamy sam prefiks,
+        // żeby data zmieściła się w jednym rzędzie z badge'ami raportów.
+        el.reportDate.innerHTML = '<span class="rd-label">' + esc(t('Raport z dnia:')) + '</span> ' + esc(latestDate);
 
         // Date range
         if (prev) {
