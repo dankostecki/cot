@@ -1425,6 +1425,9 @@
                 title: getSeriesDisplayLabel(s),
                 lastValueVisible: true, priceLineVisible: false,
                 crosshairMarkerVisible: true, crosshairMarkerRadius: 4,
+                // Pozycje COT to liczby kontraktów — końcówka `.00` nie niosła
+                // informacji, a poszerzała skalę cen kosztem samego wykresu.
+                priceFormat: { type: 'price', precision: 0, minMove: 1 },
             });
 
             const pts = [];
@@ -1525,7 +1528,7 @@
                 let v = d.value;
 
                 if (s.rpt === 'external') {
-                    h += `<div style="display:flex;gap:5px;align-items:center;margin:1px 0"><span style="width:7px;height:7px;border-radius:50%;background:${s.color};flex-shrink:0"></span><span style="color:var(--tx-2)">${getSeriesDisplayLabel(s)}:</span><span style="font-weight:600;margin-left:auto">${v.toFixed(2)}</span></div>`;
+                    h += `<div style="display:flex;gap:5px;align-items:center;margin:1px 0"><span style="width:7px;height:7px;border-radius:50%;background:${s.color};flex-shrink:0"></span><span style="color:var(--tx-2)">${getSeriesDisplayLabel(s)}:</span><span style="font-weight:600;margin-left:auto">${fmt(v)}</span></div>`;
                     return;
                 }
 
