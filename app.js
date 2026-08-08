@@ -616,12 +616,21 @@
         crossSearch: $('#cross-instr-search'), crossResults: $('#cross-instr-results'),
         crossSection: $('#cross-series-section'), crossInstrName: $('#cross-instr-name'),
         crossSelect: $('#cross-series-select'), confirmCross: $('#confirm-cross-series'),
-        fullscreenBtn: $('#fullscreen-btn'), chartWrapper: $('.chart-wrapper'),
+        fullscreenBtn: $('#fullscreen-btn'), exportImgBtn: $('#export-img-btn'),
+        chartWrapper: $('.chart-wrapper'),
         fullscreenContainer: $('#fullscreen-container'),
         qfToggle: $('#quick-filters-toggle'), qfMenu: $('#quick-filters-menu'), qfOptions: $('#qf-options'),
         globalDrawer: $('#global-settings-drawer'), globalDrawerClose: $('#global-drawer-close'),
         globalThemeBtns: $$('#global-theme-toggle .cbar-btn'), globalLangBtns: $$('#global-lang-toggle .cbar-btn')
     };
+
+    // Pasek narzędzi wykresu przykleja się pod nagłówkiem — musi znać jego wysokość
+    const syncHeaderHeight = () => {
+        const h = $('#app-header');
+        if (h) document.documentElement.style.setProperty('--header-h', h.offsetHeight + 'px');
+    };
+    syncHeaderHeight();
+    window.addEventListener('resize', syncHeaderHeight);
 
     // ============================================
     // Theme & Global Settings Drawer
@@ -1228,19 +1237,23 @@
     // ============================================
     // Chart
     // ============================================
+    // Wykrywanie ekranu dotykowego / mobilnego — używane do dostrojenia wykresów
+    const isMobile = () => window.matchMedia('(max-width: 768px)').matches;
+
     function getTheme() {
         const dk = document.documentElement.getAttribute('data-theme') === 'dark';
+        const mob = isMobile();
         return {
-            layout: { background: { type: 'solid', color: dk ? '#0a0f1a' : '#fff' }, textColor: dk ? '#6b7a94' : '#9ca3af', fontFamily: "'Inter',sans-serif", fontSize: 12 },
+            layout: { background: { type: 'solid', color: dk ? '#0a0f1a' : '#fff' }, textColor: dk ? '#6b7a94' : '#9ca3af', fontFamily: "'Inter',sans-serif", fontSize: mob ? 10 : 12 },
             grid: { vertLines: { color: dk ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.04)' }, horzLines: { color: dk ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.04)' } },
             crosshair: { mode: 0 },
-            rightPriceScale: { borderColor: dk ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.06)', visible: true, minimumWidth: 85 },
-            leftPriceScale: { borderColor: dk ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.06)', visible: false, minimumWidth: 85 },
+            rightPriceScale: { borderColor: dk ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.06)', visible: true, minimumWidth: mob ? 46 : 85 },
+            leftPriceScale: { borderColor: dk ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.06)', visible: false, minimumWidth: mob ? 46 : 85 },
             timeScale: {
                 borderColor: dk ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.06)',
                 timeVisible: false,
-                rightOffset: 80,
-                barSpacing: 8,
+                rightOffset: mob ? 10 : 80,
+                barSpacing: mob ? 5 : 8,
                 minBarSpacing: 0.5,
                 shiftVisibleRangeOnNewBar: false,
                 rightBarStaysOnScroll: false,
@@ -1248,7 +1261,8 @@
             },
             handleScale: {
                 mouseWheel: false,
-                pinch: false,
+                // Na mobile szczypanie to naturalny gest zoomu; na desktopie zostaje wyłączone
+                pinch: mob,
                 axisPressedMouseMove: {
                     time: true,
                     price: true,
@@ -1259,7 +1273,8 @@
                 mouseWheel: true,
                 pressedMouseMove: true,
                 horzTouchDrag: true,
-                vertTouchDrag: true,
+                // Na mobile pionowy gest ma przewijać stronę, a nie przesuwać wykres
+                vertTouchDrag: !mob,
             },
             kineticScroll: {
                 touch: true,
@@ -1267,6 +1282,27 @@
             },
         };
     }
+
+    // Obrót telefonu potrafi przekroczyć próg 768px (np. 390 → 844).
+    // Dostrajamy wtedy opcje zależne od mobile, bez pełnej przebudowy wykresu,
+    // żeby nie zgubić aktualnie ustawionego zakresu czasu.
+    let _wasMobile = isMobile();
+    function syncMobileChartOptions() {
+        const mob = isMobile();
+        if (mob === _wasMobile) return;
+        _wasMobile = mob;
+        const opts = {
+            layout: { fontSize: mob ? 10 : 12 },
+            rightPriceScale: { minimumWidth: mob ? 46 : 85 },
+            leftPriceScale: { minimumWidth: mob ? 46 : 85 },
+            timeScale: { rightOffset: mob ? 10 : 80, barSpacing: mob ? 5 : 8 },
+            handleScale: { pinch: mob },
+            handleScroll: { vertTouchDrag: !mob },
+        };
+        [chart, deltaChart, optionsChart, propChart].forEach(c => c && c.applyOptions(opts));
+    }
+    window.addEventListener('resize', syncMobileChartOptions);
+    window.addEventListener('orientationchange', syncMobileChartOptions);
 
     function getSeriesDisplayLabel(s) {
         if (s.rpt === 'external') return `[YF] ${s.label || s.key.toUpperCase() + ' Close'}`;
@@ -2534,6 +2570,234 @@
             }
         });
     }
+
+    // ============================================
+    // Eksport wykresu do obrazka PNG
+    // ============================================
+
+    // Skraca tekst wielokropkiem, gdy nie mieści się w podanej szerokości.
+    function truncateText(ctx, text, maxWidth) {
+        if (ctx.measureText(text).width <= maxWidth) return text;
+        let lo = 0, hi = text.length;
+        while (lo < hi) {
+            const mid = (lo + hi + 1) >> 1;
+            if (ctx.measureText(text.slice(0, mid) + '…').width <= maxWidth) lo = mid; else hi = mid - 1;
+        }
+        return text.slice(0, lo) + '…';
+    }
+
+    // Skleja części separatorem, łamiąc na kolejne linie gdy przekroczą szerokość.
+    function wrapJoined(ctx, parts, maxWidth, sep) {
+        const lines = [];
+        let cur = '';
+        parts.forEach(p => {
+            const next = cur ? cur + sep + p : p;
+            if (cur && ctx.measureText(next).width > maxWidth) {
+                lines.push(cur);
+                cur = p;
+            } else {
+                cur = next;
+            }
+        });
+        if (cur) lines.push(truncateText(ctx, cur, maxWidth));
+        return lines.map(l => truncateText(ctx, l, maxWidth));
+    }
+
+    // Zawija legendę w linie mieszczące się w podanej szerokości.
+    // Zwraca tablicę linii, gdzie każda linia to tablica pozycji {label, color, w}.
+    function layoutLegend(ctx, items, maxWidth, dotW, gapW) {
+        const lines = [];
+        let line = [], lineW = 0;
+        items.forEach(it => {
+            const label = truncateText(ctx, it.label, maxWidth - dotW);
+            const w = dotW + ctx.measureText(label).width;
+            if (line.length && lineW + gapW + w > maxWidth) {
+                lines.push(line);
+                line = []; lineW = 0;
+            }
+            line.push({ ...it, label, w });
+            lineW += (line.length > 1 ? gapW : 0) + w;
+        });
+        if (line.length) lines.push(line);
+        return lines;
+    }
+
+    async function exportChartImage() {
+        if (!chart) { alert('Brak wykresu do zapisania.'); return; }
+
+        const btn = el.exportImgBtn;
+        if (btn) { btn.disabled = true; btn.style.opacity = '0.5'; }
+
+        try {
+            // ── Zbierz widoczne panele w kolejności wyświetlania ──
+            const panes = [{ c: chart, box: el.chartBox }];
+            [
+                { c: deltaChart, wrap: el.deltaChartWrap, box: el.deltaChartBox },
+                { c: optionsChart, wrap: el.optionsChartWrap, box: el.optionsChartBox },
+                { c: propChart, wrap: el.propChartWrap, box: el.propChartBox },
+            ].forEach(p => {
+                if (p.c && p.wrap && p.wrap.style.display !== 'none') panes.push({ c: p.c, box: p.box });
+            });
+
+            const shots = panes.map(p => p.c.takeScreenshot());
+            const imgW = Math.max(...shots.map(s => s.width));
+            // Skala względem pikseli CSS — nagłówek ma wyglądać tak samo na każdym DPR
+            const scale = Math.max(1, imgW / Math.max(1, panes[0].box.clientWidth));
+            const S = v => Math.round(v * scale);
+
+            const dk = document.documentElement.getAttribute('data-theme') === 'dark';
+            const bg = dk ? '#0a0f1a' : '#ffffff';
+            const txMain = dk ? '#e6edf7' : '#111827';
+            const txDim = dk ? '#6b7a94' : '#6b7280';
+            const bd = dk ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)';
+
+            // ── Metadane z DOM (dzięki temu są już przetłumaczone) ──
+            const title = (el.chartName?.textContent || 'COT').trim();
+            const activeTxt = sel => {
+                const b = document.querySelector(sel + ' .cbar-btn.active');
+                return b ? b.textContent.trim() : '';
+            };
+            const metaParts = [
+                activeTxt('#report-type-toggle'),
+                activeTxt('#data-type-toggle'),
+                activeTxt('#position-type-toggle'),
+                (el.chartUnits?.textContent || '').trim(),
+                (el.reportDate?.textContent || '').trim(),
+            ].filter(Boolean);
+
+            const legendItems = activeSeries
+                .filter(s => s.visible !== false)
+                .map(s => ({ label: getSeriesDisplayLabel(s), color: s.color }));
+
+            const stamp = new Date().toLocaleDateString('pl-PL');
+            const footParts = ['Źródło: CFTC / ICE Futures Europe', `wygenerowano ${stamp}`, location.hostname];
+
+            // ── Pomiar: wszystko musi zmieścić się w szerokości obrazka ──
+            const pad = S(20);
+            const innerW = imgW - pad * 2;
+            const measure = document.createElement('canvas').getContext('2d');
+
+            const titleFont = `700 ${S(21)}px Inter, system-ui, sans-serif`;
+            const metaFont = `${S(12)}px Inter, system-ui, sans-serif`;
+            const legendFont = `500 ${S(12)}px Inter, system-ui, sans-serif`;
+            const footFont = `${S(11)}px Inter, system-ui, sans-serif`;
+
+            measure.font = titleFont;
+            const titleTxt = truncateText(measure, title, innerW);
+
+            measure.font = metaFont;
+            const metaLines = wrapJoined(measure, metaParts, innerW, '  •  ');
+
+            measure.font = legendFont;
+            const dotW = S(16), gapW = S(14), lineH = S(20);
+            const legendLines = layoutLegend(measure, legendItems, innerW, dotW, gapW);
+
+            measure.font = footFont;
+            const footLines = wrapJoined(measure, footParts, innerW, '  •  ');
+
+            const metaLineH = S(17), footLineH = S(15);
+            const headerH = pad + S(28)
+                + metaLines.length * metaLineH
+                + (legendLines.length ? S(12) + legendLines.length * lineH : 0)
+                + pad;
+            const footerH = S(14) + footLines.length * footLineH + S(12);
+            const gap = S(1);
+            const chartsH = shots.reduce((a, s) => a + s.height, 0) + gap * (shots.length - 1);
+
+            // ── Kompozycja ──
+            const out = document.createElement('canvas');
+            out.width = imgW;
+            out.height = headerH + chartsH + footerH;
+            const ctx = out.getContext('2d');
+            ctx.fillStyle = bg;
+            ctx.fillRect(0, 0, out.width, out.height);
+            ctx.textBaseline = 'top';
+
+            let y = pad;
+
+            ctx.fillStyle = txMain;
+            ctx.font = titleFont;
+            ctx.fillText(titleTxt, pad, y);
+            y += S(28);
+
+            ctx.fillStyle = txDim;
+            ctx.font = metaFont;
+            metaLines.forEach(l => { ctx.fillText(l, pad, y); y += metaLineH; });
+
+            if (legendLines.length) {
+                y += S(12);
+                ctx.font = legendFont;
+                legendLines.forEach(line => {
+                    let x = pad;
+                    line.forEach(it => {
+                        ctx.fillStyle = it.color;
+                        ctx.beginPath();
+                        ctx.arc(x + S(4), y + S(7), S(4), 0, Math.PI * 2);
+                        ctx.fill();
+                        ctx.fillStyle = txMain;
+                        ctx.fillText(it.label, x + dotW, y);
+                        x += it.w + gapW;
+                    });
+                    y += lineH;
+                });
+            }
+
+            y = headerH;
+            shots.forEach((s, i) => {
+                ctx.drawImage(s, 0, y);
+                y += s.height;
+                if (i < shots.length - 1) {
+                    ctx.fillStyle = bd;
+                    ctx.fillRect(0, y, out.width, gap);
+                    y += gap;
+                }
+            });
+
+            ctx.fillStyle = bd;
+            ctx.fillRect(pad, y, innerW, Math.max(1, S(1)));
+            y += S(14);
+            ctx.fillStyle = txDim;
+            ctx.font = footFont;
+            footLines.forEach(l => { ctx.fillText(l, pad, y); y += footLineH; });
+
+            // ── Zapis / udostępnienie ──
+            const slug = title.replace(/[^\p{L}\p{N}]+/gu, '-').replace(/^-|-$/g, '').slice(0, 60) || 'chart';
+            const dateSlug = ((el.reportDate?.textContent || '').match(/\d{4}-\d{2}-\d{2}/) || [])[0]
+                || new Date().toISOString().slice(0, 10);
+            const filename = `COT_${slug}_${dateSlug}.png`;
+
+            const blob = await new Promise(res => out.toBlob(res, 'image/png'));
+            if (!blob) throw new Error('Nie udało się utworzyć obrazka.');
+
+            // Na mobile natywny arkusz udostępniania pozwala zapisać do Zdjęć lub wysłać dalej
+            const file = new File([blob], filename, { type: 'image/png' });
+            if (navigator.canShare && navigator.canShare({ files: [file] })) {
+                try {
+                    await navigator.share({ files: [file], title });
+                    return;
+                } catch (err) {
+                    if (err && err.name === 'AbortError') return; // użytkownik anulował
+                    // w innym wypadku spadamy do zwykłego pobierania
+                }
+            }
+
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            setTimeout(() => URL.revokeObjectURL(url), 1000);
+        } catch (e) {
+            console.error(e);
+            alert('Nie udało się zapisać obrazka wykresu.');
+        } finally {
+            if (btn) { btn.disabled = false; btn.style.opacity = ''; }
+        }
+    }
+
+    if (el.exportImgBtn) el.exportImgBtn.onclick = exportChartImage;
 
     // Fullscreen toggle
     if (el.fullscreenBtn) {
