@@ -1582,7 +1582,13 @@
         new ResizeObserver(() => deltaChart && deltaChart.applyOptions({ width: c.clientWidth, height: c.clientHeight })).observe(c);
 
         if (_globalTimeScaleData.length) {
-            deltaChart.addLineSeries({ visible: false, crosshairMarkerVisible: false, priceLineVisible: false, lastValueVisible: false }).setData(_globalTimeScaleData);
+            // Format osi bierze się z pierwszej serii na niej, a ta pomocnicza
+            // (nośnik osi czasu) jest dodawana przed histogramem — bez tego
+            // narzucała skali domyślne dwa miejsca po przecinku.
+            deltaChart.addLineSeries({
+                visible: false, crosshairMarkerVisible: false, priceLineVisible: false, lastValueVisible: false,
+                priceFormat: { type: 'price', precision: 0, minMove: 1 },
+            }).setData(_globalTimeScaleData);
         }
 
         cotSeries.forEach(s => {
@@ -1605,7 +1611,7 @@
             const hs = deltaChart.addHistogramSeries({
                 color: s.color,
                 priceScaleId: deltaAxis,
-                priceFormat: { type: 'volume' }
+                priceFormat: { type: 'price', precision: 0, minMove: 1 }
             });
             hs.setData(histData);
             s._deltaHs = hs;
@@ -1717,7 +1723,10 @@
         new ResizeObserver(() => optionsChart && optionsChart.applyOptions({ width: c.clientWidth, height: c.clientHeight })).observe(c);
 
         if (_globalTimeScaleData.length) {
-            optionsChart.addLineSeries({ visible: false, crosshairMarkerVisible: false, priceLineVisible: false, lastValueVisible: false }).setData(_globalTimeScaleData);
+            optionsChart.addLineSeries({
+                visible: false, crosshairMarkerVisible: false, priceLineVisible: false, lastValueVisible: false,
+                priceFormat: { type: 'price', precision: 0, minMove: 1 },
+            }).setData(_globalTimeScaleData);
         }
 
         cotSeries.forEach(s => {
@@ -1756,7 +1765,7 @@
             const hs = optionsChart.addHistogramSeries({
                 color: s.color,
                 priceScaleId: 'right',
-                priceFormat: { type: 'volume' }
+                priceFormat: { type: 'price', precision: 0, minMove: 1 }
             });
             hs.setData(dd);
             s._optHs = hs;
