@@ -1324,7 +1324,9 @@
         const side = id => {
             let visible = false, w = 0;
             panes.forEach(c => {
-                const width = c.priceScale(id).width(); // 0 gdy oś ukryta
+                const ps = c.priceScale(id);
+                if (!ps || typeof ps.width !== 'function') return;
+                const width = ps.width(); // 0 gdy oś ukryta
                 if (width > 0) { visible = true; w = Math.max(w, width); }
             });
             return { visible, minimumWidth: Math.ceil(w) };
@@ -1338,7 +1340,9 @@
 
     // Osie raportują szerokość dopiero po wyrenderowaniu, stąd odłożenie o klatki
     function scheduleScaleSync() {
-        requestAnimationFrame(() => requestAnimationFrame(syncPriceScaleWidths));
+        requestAnimationFrame(() => requestAnimationFrame(() => {
+            try { syncPriceScaleWidths(); } catch (e) { console.error('Nie udało się wyrównać osi:', e); }
+        }));
     }
 
     function getSeriesDisplayLabel(s) {
@@ -2832,26 +2836,18 @@
         const blob = await new Promise(res => out.toBlob(res, 'image/png'));
         if (!blob) throw new Error('Nie udało się utworzyć obrazka.');
 
-        // Na mobile natywny arkusz udostępniania pozwala zapisać do Zdjęć lub wysłać dalej
-        const file = new File([blob], filename, { type: 'image/png' });
-        if (navigator.canShare && navigator.canShare({ files: [file] })) {
-            try {
-                await navigator.share({ files: [file], title });
-                return;
-            } catch (err) {
-                if (err && err.name === 'AbortError') return; // użytkownik anulował
-                // w innym wypadku spadamy do zwykłego pobierania
-            }
-        }
-
+        // Celowo bez navigator.share(): na iOS otwiera on arkusz udostępniania,
+        // z którego obrazek da się najwyżej skopiować — a skopiowany nie wkleja
+        // się do części aplikacji. Pobranie daje plik, który można załączyć.
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
         a.download = filename;
+        a.rel = 'noopener';
         document.body.appendChild(a);
         a.click();
         a.remove();
-        setTimeout(() => URL.revokeObjectURL(url), 1000);
+        setTimeout(() => URL.revokeObjectURL(url), 60000);
     }
 
     // ── Ścieżka 1: zrzut tego, co widać na ekranie ──
