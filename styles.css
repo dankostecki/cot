@@ -2280,6 +2280,10 @@ a {
     }
 
     .cat-mobile-dropdown {
+        /* Startuje zwinięta. Bez tego renderowała się otwarta, a skrypt i tak
+           uznawał ją za zamkniętą (style.display puste), więc pierwsze
+           tapnięcie w przełącznik nic nie zmieniało. */
+        display: none;
         position: absolute;
         left: 16px;
         right: 16px;
@@ -2851,4 +2855,24 @@ a {
     font-size: 0.72rem;
     color: var(--tx-3);
     font-variant-numeric: tabular-nums;
+}
+
+/* ─── Menu eksportu: sekcje Pobierz / Udostępnij ─── */
+#export-menu .st-menu-header {
+    padding: 10px 15px;
+    font-size: 0.8rem;
+    color: var(--tx-3);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+#export-menu .export-group {
+    display: flex;
+    flex-direction: column;
+    padding: 5px;
+}
+
+#export-menu .export-sep {
+    border-top: 1px solid var(--bd);
+    margin-top: 4px;
 }
