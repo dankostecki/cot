@@ -1313,6 +1313,34 @@
     window.addEventListener('resize', syncMobileChartOptions);
     window.addEventListener('orientationchange', syncMobileChartOptions);
 
+    // Panele są osobnymi instancjami wykresu, a każda dobiera szerokość osi pod
+    // własne etykiety — panel zmiany t/t wpina dane w prawą oś, której główny
+    // wykres często nie ma. Obszary rysowania wychodziły więc różnej szerokości
+    // i daty nie stały w jednej linii. Wyrównujemy widoczność i szerokość obu
+    // osi do najszerszego panelu, żeby wszystkie miały tę samą geometrię.
+    function syncPriceScaleWidths() {
+        const panes = [chart, deltaChart, optionsChart, propChart].filter(Boolean);
+        if (panes.length < 2) return;
+        const side = id => {
+            let visible = false, w = 0;
+            panes.forEach(c => {
+                const width = c.priceScale(id).width(); // 0 gdy oś ukryta
+                if (width > 0) { visible = true; w = Math.max(w, width); }
+            });
+            return { visible, minimumWidth: Math.ceil(w) };
+        };
+        const L = side('left'), R = side('right');
+        panes.forEach(c => c.applyOptions({
+            leftPriceScale: { visible: L.visible, minimumWidth: L.minimumWidth },
+            rightPriceScale: { visible: R.visible, minimumWidth: R.minimumWidth },
+        }));
+    }
+
+    // Osie raportują szerokość dopiero po wyrenderowaniu, stąd odłożenie o klatki
+    function scheduleScaleSync() {
+        requestAnimationFrame(() => requestAnimationFrame(syncPriceScaleWidths));
+    }
+
     function getSeriesDisplayLabel(s) {
         if (s.rpt === 'external') return `[YF] ${s.label || s.key.toUpperCase() + ' Close'}`;
         const fld = (SERIES[s.rpt] && SERIES[s.rpt].fields) ? SERIES[s.rpt].fields.find(f => f.key === s.key) : null;
@@ -1429,6 +1457,7 @@
         rebuildDeltaChart();
         rebuildOptionsImpactChart();
         syncChartsGroup();
+        scheduleScaleSync();
     }
 
     function applyRange(range) {
@@ -1533,8 +1562,11 @@
         const hasR = activeSeries.filter(s => s.visible !== false).some(s => s.axis === 'right');
         const hasL = activeSeries.filter(s => s.visible !== false).some(s => s.axis === 'left');
 
-        theme.rightPriceScale.visible = true; // Zawsze z prawej
-        theme.leftPriceScale.visible = hasL; // By trzymał margines w razie czego
+        // Dane panelu trafiają na tę oś, której używa główny wykres — inaczej
+        // panel ma oś, której główny nie ma, i obszary rysowania się rozjeżdżają.
+        const deltaAxis = hasR ? 'right' : 'left';
+        theme.rightPriceScale.visible = hasR || !hasL;
+        theme.leftPriceScale.visible = hasL;
         theme.timeScale.visible = false; // ukrycie powtarzającej się osi dat
         // usunięcie wyciszenia horzLine - teraz widać poprzeczkę poziomego crosshaira
 
@@ -1565,7 +1597,7 @@
 
             const hs = deltaChart.addHistogramSeries({
                 color: s.color,
-                priceScaleId: 'right', // wymuszenie prawej osi, bo jest luz
+                priceScaleId: deltaAxis,
                 priceFormat: { type: 'volume' }
             });
             hs.setData(histData);
@@ -1729,6 +1761,7 @@
         }
         setupOptionsTooltip();
         syncChartsGroup();
+        scheduleScaleSync();
     }
 
     function setupOptionsTooltip() {
@@ -2910,6 +2943,7 @@
                 height: p.box.clientHeight,
             }));
             setTimeRange(currentRange);
+            scheduleScaleSync();
             veil.remove();
             window.scrollTo(0, savedScroll);
         }
