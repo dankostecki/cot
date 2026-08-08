@@ -1809,6 +1809,12 @@ a {
     border-right: 1px solid var(--bd);
 }
 
+/* Po przycisku „Filtry" stoi ukryty dropdown, więc nie jest :last-child
+   i łapał kreskę dzielącą prowadzącą donikąd. */
+#quick-filters-toggle {
+    border-right: none;
+}
+
 .cbar-btn:hover {
     background: var(--bg-2);
     color: var(--tx-1);
@@ -2554,4 +2560,179 @@ a {
     color: #fff !important;
     border: 1px solid var(--acc) !important;
     box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3) !important;
+}
+
+/* ============================================================
+   MOBILE CHART VIEW
+   Pasek narzędzi ma ~15 kontrolek — na telefonie samo flex-wrap
+   rozbijało go na 5 rzędów. Zamiast tego jeden przewijany rząd
+   z przyklejonymi po prawej przyciskami akcji.
+   ============================================================ */
+
+@media (max-width: 768px) {
+
+    /* ── Pasek narzędzi: jeden przewijany rząd ── */
+    .chart-section-card {
+        position: sticky;
+        top: var(--header-h, 52px);
+        z-index: 60;
+        border-radius: 0;
+        margin-bottom: 0;
+    }
+
+    .compact-bar {
+        flex-wrap: nowrap;
+        overflow-x: auto;
+        overscroll-behavior-x: contain;
+        -webkit-overflow-scrolling: touch;
+        scrollbar-width: none;
+        gap: 6px;
+        padding: 8px 0 8px 12px;
+        min-height: 54px;
+    }
+
+    .compact-bar::-webkit-scrollbar {
+        display: none;
+    }
+
+    /* Separatory i rozpychacz nie mają sensu w przewijanym rzędzie */
+    .compact-bar .cbar-sep,
+    .compact-bar > div[style*="flex:1"] {
+        display: none;
+    }
+
+    .cbar-group {
+        flex-shrink: 0;
+    }
+
+    /* Akcje zawsze pod kciukiem, niezależnie od przewinięcia paska.
+       Tło musi być kryjące, żeby przewijane przyciski nie prześwitywały —
+       zmiękczamy tylko lewą krawędź osobnym gradientem. */
+    .cbar-gear-wrap {
+        position: sticky;
+        right: 0;
+        flex-shrink: 0;
+        margin-left: 20px;
+        padding-right: 12px;
+        background: var(--bg-2);
+    }
+
+    .cbar-gear-wrap::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        bottom: 0;
+        left: -20px;
+        width: 20px;
+        background: linear-gradient(to right, transparent, var(--bg-2));
+        pointer-events: none;
+    }
+
+    /* ── Cele dotykowe ── */
+    .cbar-btn,
+    .cbar-price-btn {
+        padding: 9px 13px;
+        font-size: 0.8rem;
+    }
+
+    .cbar-range {
+        gap: 3px;
+    }
+
+    .cbar-range .range-btn {
+        padding: 9px 11px;
+        font-size: 0.78rem;
+    }
+
+    .cbar-gear-btn {
+        width: 40px;
+        height: 40px;
+    }
+
+    /* ── Chipsy serii: przewijane poziomo zamiast zawijania ── */
+    .chips-bar {
+        flex-wrap: nowrap;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        scrollbar-width: none;
+        padding: 8px 12px;
+    }
+
+    .chips-bar::-webkit-scrollbar {
+        display: none;
+    }
+
+    .series-chip {
+        flex-shrink: 0;
+    }
+
+    /* ── Wysokości wykresów względem widoku, nie stałe piksele ── */
+    .chart-container {
+        height: 56vh;
+        height: 56dvh;
+        min-height: 300px;
+        max-height: 480px;
+    }
+
+    /* Panele pochodne mają wysokość w atrybucie style — stąd !important */
+    #delta-chart-container,
+    #options-chart-container {
+        height: 22dvh !important;
+        min-height: 118px;
+        max-height: 190px;
+    }
+
+    #prop-chart-container {
+        height: 26dvh !important;
+        min-height: 140px;
+        max-height: 220px;
+    }
+
+    /* Uchwyty zmiany rozmiaru obsługują tylko mysz — na dotyku przeszkadzają */
+    #main-resizer,
+    #delta-resizer,
+    #options-resizer,
+    #prop-resizer {
+        display: none;
+    }
+
+    /* Tooltip nie może zasłaniać połowy wykresu */
+    .chart-tip {
+        max-width: calc(100% - 16px) !important;
+        font-size: 0.68rem !important;
+        padding: 6px 9px !important;
+    }
+}
+
+/* Telefon w poziomie — wykres dostaje niemal cały ekran */
+@media (max-width: 900px) and (max-height: 520px) and (orientation: landscape) {
+    .chart-header {
+        display: none;
+    }
+
+    .chart-container {
+        height: 72dvh;
+        min-height: 200px;
+        max-height: none;
+    }
+
+    #delta-chart-container,
+    #options-chart-container,
+    #prop-chart-container {
+        height: 30dvh !important;
+        min-height: 96px;
+    }
+}
+
+@media (max-width: 480px) {
+    .chart-container {
+        height: 52vh;
+        height: 52dvh;
+        min-height: 280px;
+    }
+
+    /* Jednostki kontraktu zabierają cały wiersz nagłówka, a rzadko są potrzebne */
+    #chart-contract-units {
+        display: none;
+    }
 }
